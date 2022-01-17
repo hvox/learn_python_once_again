@@ -20,3 +20,8 @@ Alternative:
 Also I like this one: https://cbea.ms/git-commit/
 And this one: https://dev.to/i5han3/git-commit-message-convention-that-you-can-follow-1709
 And this one: https://eslint.org/docs/developer-guide/contributing/pull-requests
+
+My convention:
+  context[if any]: the change
+For example:
+  hello.py: style code
