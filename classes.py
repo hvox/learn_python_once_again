@@ -22,3 +22,11 @@ Data = lambda flds, **args: make_dataclass('Δ', flds.split(), **args)
 class Point(Data('x y', frozen=True, order=True)):
     pass
 print(Point(1, 2))
+
+from dataclasses import make_dataclass
+def Data(flds, **args):
+    flds = flds if isinstance(flds, list) else flds.split()
+    return make_dataclass('Δ', flds, **args)
+class Point(Data('x y', frozen=True, order=True)):
+    pass
+print(Point(1, 2))
