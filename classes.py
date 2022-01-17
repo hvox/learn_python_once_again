@@ -16,3 +16,9 @@ class Point:
     x: int
     y: int
 print(Point(1, 2))
+
+from dataclasses import make_dataclass
+Data = lambda flds, **args: make_dataclass('Δ', flds.split(), **args)
+class Point(Data('x y', frozen=True, order=True)):
+    pass
+print(Point(1, 2))
