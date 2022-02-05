@@ -1,0 +1,22 @@
+# Kleisli category
+Monad m:
+    # composition of Kleisli morphisms
+    (>=>)  : (a -> m b) -> (b -> m c) -> (a -> m c)
+    # identical morphism
+    return : a -> m a
+
+# Classic monad
+Monad m:
+    # bind operation
+    (>>=)  : m a -> (a -> m b) -> m b
+    # pure or pack operation
+    return : a -> m a
+
+# Simplified monad
+Monad m:
+    # fold or concatentane operation
+    join   : m (m a) -> m a
+    # pure or pack operation
+    return : a -> m a
+    # explicit morphism of arrows
+    fmap   : (a -> b) -> (m a -> m b)
