@@ -1,0 +1,3 @@
+#/bin/sh
+gcc --shared -fPIC -o code_in_c.so code.c
+nim c --app:lib --o:code_in_nim.so code.nim
