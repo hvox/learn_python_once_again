@@ -23,6 +23,11 @@ def test_fixtures(the_data):
     assert what_is_the_answer(the_data)
 
 
+@pytest.mark.xfail(strict=True)
+def test_fixtures2(the_data):
+    assert what_is_the_answer(the_data) == 42
+
+
 @pytest.mark.parametrize("something", everything)
 def test_everything(something):
     assert what_is_the_answer(something) == something
