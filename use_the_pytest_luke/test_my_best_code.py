@@ -33,6 +33,11 @@ def test_fixtures3(the_data):
     assert what_is_the_answer(the_data) == 42
 
 
+@pytest.mark.skipif(True, reason="The cake is a lie")
+def test_fixtures4(the_data):
+    assert what_is_the_answer(the_data) == 42
+
+
 @pytest.mark.parametrize("something", everything)
 def test_everything(something):
     assert what_is_the_answer(something) == something
