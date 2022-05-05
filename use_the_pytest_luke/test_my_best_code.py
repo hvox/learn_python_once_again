@@ -1,7 +1,7 @@
 import pytest
 
 what_is_the_answer, is_the_answer = lambda x=None: x or 42, lambda x: x == 42
-everything = set(range(1, 100))
+everything = set(range(1, 99))
 everything |= set("I like everything about pytest except its speed")
 the_data_was_inicialized = False
 
@@ -36,6 +36,10 @@ def test_fixtures3(the_data):
 @pytest.mark.skipif(True, reason="The cake is a lie")
 def test_fixtures4(the_data):
     assert what_is_the_answer(the_data) == 42
+
+
+def test_usetmp(tmp_path):
+    assert (tmp_path / "hello.txt").write_text("hi")
 
 
 @pytest.mark.parametrize("something", everything)
