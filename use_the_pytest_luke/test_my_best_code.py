@@ -1,9 +1,14 @@
 import pytest
 
 what_is_the_answer, is_the_answer = lambda x=None: x or 42, lambda x: x == 42
-everything = set(range(1, 99))
+everything = set(range(1, 98))
 everything |= set("I like everything about pytest except its speed")
 the_data_was_inicialized = False
+
+
+def test_that_division_by_zero_is_wrong():
+    with pytest.raises(ZeroDivisionError):
+        1 / 0
 
 
 @pytest.fixture
