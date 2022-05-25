@@ -3,8 +3,8 @@ from types import SimpleNamespace
 namespace = SimpleNamespace()
 namespace.recursion = namespace
 namespace.f = (
-    lambda n:
-    1 if n <= 2
+    lambda n: 1
+    if n <= 2
     else n * namespace.recursion.recursion.recursion.recursion.f(n - 1)
 )
 print(namespace.f(5))
@@ -63,7 +63,18 @@ def parse_function(source, i):
 # function = name "(" arg* ")"
 def parse_function(i, j, name, args):
     return Function(i, name, args)
+
+
 # generated code
 def parse_function(source, i=0, postprocessing=parse_function):
     ...
     return postprocessing(i, j, name, args)
+
+
+# Option 7: separate EBNF and the actions
+def parse_function(source, i=0):
+    parsed = parse_name(source, i)
+    if not parsed:
+        return None
+    i, j, result = parsed  # <-- generated code
+    return i, j, assemble_function(i, j, result)  # <-- call of user function
