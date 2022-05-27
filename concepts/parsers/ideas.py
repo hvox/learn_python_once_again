@@ -78,3 +78,8 @@ def parse_function(source, i=0):
         return None
     i, j, result = parsed  # <-- generated code
     return i, j, assemble_function(i, j, result)  # <-- call of user function
+
+
+# Option 8: parser combinators with error recovery (or PEG)
+# https://eyalkalderon.com/blog/nom-error-recovery/
+grouped = "(" & expr & (")" | ERROR("expected semicolon", "[!)]*)") )
