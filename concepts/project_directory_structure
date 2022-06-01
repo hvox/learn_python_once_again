@@ -1,0 +1,29 @@
+helloworld/
+│
+├── bin/
+│   └── hello
+│
+├── docs/
+│   ├── hello.md
+│   └── world.md
+│
+├── helloworld/
+│   ├── __init__.py
+│   ├── printer.py
+│   └── libs/
+│       ├── world/
+│       │   ├── __init__.py
+│       │   ├── helpers.py
+│       │   └── world.py
+│       └── hello.py
+│
+├── data/
+│   └── the_hello_world_string.tsv
+│
+├── tests/
+│   ├── hello_tests.py
+│   └── world_tests.py
+│
+├── license
+├── readme.md
+└── .gitignore
