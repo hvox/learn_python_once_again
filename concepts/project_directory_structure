@@ -21,9 +21,13 @@ helloworld/
 ├── data/
 │   └── the_hello_world_string.tsv
 │
-├── tests/ # actually I have no idea how to import my module into tests
+├── tests/
 │   ├── hello_tests.py
-│   └── world_tests.py
+│   ├── world_tests.py
+│   └── context.py # dirty hack to import helloworld into tests
+│       - import os
+│       - import sys
+│       - sys.path.insert(1, os.path.join(sys.path[0], '..'))
 │
 ├── license
 ├── readme.md
