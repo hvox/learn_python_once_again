@@ -1,3 +1,4 @@
+# example of project layout
 helloworld/
 │
 ├── bin/
@@ -20,7 +21,7 @@ helloworld/
 ├── data/
 │   └── the_hello_world_string.tsv
 │
-├── tests/
+├── tests/ # actually I have no idea how to import my module into tests
 │   ├── hello_tests.py
 │   └── world_tests.py
 │
