@@ -1,0 +1,60 @@
+#!/usr/bin/env python3.10
+"""
+Usage:
+    ascii_image encode <image> [-u | --unicode]
+    ascii_image decode <width> <height> <encoded> [-u | --unicode]
+    ascii_image (-h | --help)
+
+Options:
+    -h --help      Show this screen.
+    -u --unicode   Use unicode block characters
+
+Examples:
+    ascii_image decode 5 5 0x70140
+"""
+BLOCK_CHARACTERS = " \u2580\u2584\u2588"
+
+
+def encode_ascii_image(image: list[str]):
+    w, h = max(map(len, image)), len(image)
+    pixels = "".join([row + " " * (w - len(row)) for row in image])
+    return w, h, sum(((pix != " ") << i) for i, pix in enumerate(pixels))
+
+
+def decode_ascii_image(width: int, height: int, encoded_image: int):
+    pixels = [" @"[1 & encoded_image >> i] for i in range(width * height)]
+    return [
+        "".join(pixels[y * width + x] for x in range(width))
+        for y in range(height)
+    ]
+
+
+def encode_block_image(image: list[str]):
+    w, h = max(map(len, image)), len(image)
+    pixels = "".join([row + " " * (w - len(row)) for row in image])
+    bits = (BLOCK_CHARACTERS.index(pixel) for pixel in pixels)
+    return w, h, sum(bit << (2 * i) for i, bit in enumerate(bits))
+
+
+def decode_block_image(width: int, height: int, encoded_image: int):
+    n = encoded_image
+    pixels = [BLOCK_CHARACTERS[3 & n >> i * 2] for i in range(width * height)]
+    return [
+        "".join(pixels[y * width + x] for x in range(width))
+        for y in range(height)
+    ]
+
+
+if __name__ == "__main__":
+    import docopt
+    from ast import literal_eval
+    args = docopt.docopt(__doc__)
+    if args["encode"]:
+        f = encode_block_image if args["--unicode"] else encode_ascii_image
+        width, height, encoded = f(args["<image>"].strip("\n").split("\n"))
+        print(width, height, hex(encoded))
+    else:
+        f = decode_block_image if args["--unicode"] else decode_ascii_image
+        width, height = map(literal_eval, (args["<width>"], args["<height>"]))
+        encoded = literal_eval(args["<encoded>"])
+        print("\n".join(f(width, height, encoded)))
