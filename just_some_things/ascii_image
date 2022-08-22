@@ -10,7 +10,8 @@ Options:
     -u --unicode   Use unicode block characters
 
 Examples:
-    ascii_image decode 5 5 0x70140
+    ascii_image decode 19 3 0x1515151511cc0c0c5cdf703031733 -u
+    ascii_image decode 19 3 0x15111511045c9c5cdc3172717331d -u
 """
 BLOCK_CHARACTERS = " \u2580\u2584\u2588"
 
