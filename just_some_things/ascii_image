@@ -32,7 +32,7 @@ def decode_ascii_image(width: int, height: int, encoded_image: int):
 def encode_block_image(image: list[str]):
     w, h = max(map(len, image)), len(image)
     pixels = "".join([row + " " * (w - len(row)) for row in image])
-    bits = (BLOCK_CHARACTERS.index(pixel) for pixel in pixels)
+    bits = (BLOCK_CHARACTERS.find(pixel) % 4 for pixel in pixels)
     return w, h, sum(bit << (2 * i) for i, bit in enumerate(bits))
 
 
@@ -48,6 +48,7 @@ def decode_block_image(width: int, height: int, encoded_image: int):
 if __name__ == "__main__":
     import docopt
     from ast import literal_eval
+
     args = docopt.docopt(__doc__)
     if args["encode"]:
         f = encode_block_image if args["--unicode"] else encode_ascii_image
