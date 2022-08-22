@@ -1,17 +1,21 @@
 #!/usr/bin/env python3.10
-"""
+r"""
 Usage:
-    ascii_image encode <image> [-u | --unicode]
-    ascii_image decode <width> <height> <encoded> [-u | --unicode]
-    ascii_image (-h | --help)
+    ascii_image encode <image> [-ub]
+    ascii_image decode <width> <height> <encoded> [-u]
+    ascii_image -h | --help
 
 Options:
     -h --help      Show this screen.
     -u --unicode   Use unicode block characters
+    -b --base64    Use base64 encoding instead of hex values
 
 Examples:
-    ascii_image decode 19 3 0x1515151511cc0c0c5cdf703031733 -u
-    ascii_image decode 19 3 0x15111511045c9c5cdc3172717331d -u
+    ascii_image decode 19 6 =MxcDA/fNxcDAHFFRUVF1zFycXAw3FycXQURFRAU= -u
+    ascii_image decode 39 3 =Nw01NTMXFzU39wzDRU1NzQ3DTV1RUVEBUVFBUFEB -u
+    ascii_image decode 15 3 0x151515110c0c5cdc3031733 -u
+    ascii_image decode 7 5 0x3e93764be
+    ascii_image encode 12
 """
 BLOCK_CHARACTERS = " \u2580\u2584\u2588"
 
@@ -47,16 +51,35 @@ def decode_block_image(width: int, height: int, encoded_image: int):
 
 
 if __name__ == "__main__":
-    import docopt
-    from ast import literal_eval
+    import base64, docopt
+
+    def int_to_base64(n: int):
+        n_bytes = n.to_bytes((n.bit_length() + 7) // 8, "little")
+        return "=" + base64.encodebytes(n_bytes).decode()
+
+    def base64_to_int(s: str):
+        n_bytes = base64.decodebytes(s.removeprefix("=").encode())
+        return int.from_bytes(n_bytes, "little")
+
+    def parse_int(s: str):
+        if s[0] == "=":
+            return base64_to_int(s)
+        elif s[:2] == "0x":
+            return int(s[2:], 16)
+        elif s[:2] == "0o":
+            return int(s[2:], 8)
+        elif s[:2] == "0b":
+            return int(s[2:], 2)
+        return int(s)
 
     args = docopt.docopt(__doc__)
     if args["encode"]:
         f = encode_block_image if args["--unicode"] else encode_ascii_image
         width, height, encoded = f(args["<image>"].strip("\n").split("\n"))
-        print(width, height, hex(encoded))
+        encoded = int_to_base64(encoded) if args["--base64"] else hex(encoded)
+        print(width, height, encoded)
     else:
         f = decode_block_image if args["--unicode"] else decode_ascii_image
-        width, height = map(literal_eval, (args["<width>"], args["<height>"]))
-        encoded = literal_eval(args["<encoded>"])
+        width, height = map(int, (args["<width>"], args["<height>"]))
+        encoded = parse_int(args["<encoded>"])
         print("\n".join(f(width, height, encoded)))
