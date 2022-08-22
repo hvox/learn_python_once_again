@@ -15,6 +15,7 @@ Examples:
     ascii_image decode 39 3 =Nw01NTMXFzU39wzDRU1NzQ3DTV1RUVEBUVFBUFEB -u
     ascii_image decode 15 3 0x151515110c0c5cdc3031733 -u
     ascii_image decode 7 5 0x3e93764be
+    ascii_image encode "@ @    @  @@ @@@@@@@@@ @" -b
     ascii_image encode 12
 """
 BLOCK_CHARACTERS = " \u2580\u2584\u2588"
