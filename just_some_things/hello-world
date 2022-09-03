@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+
+from os import get_terminal_size
+from random import choice, randint
+from time import sleep
+
+while 1:
+    hello = choice(["H", "h"]) + "ello" + choice([",", ""])
+    world = choice(["W", "w"]) + "orld" + choice(["!", ".", ""])
+    message = hello + " " + world
+    position = randint(0, get_terminal_size().columns - len(message) - 1)
+    print(" " * position + message)
+    sleep(0.01)
