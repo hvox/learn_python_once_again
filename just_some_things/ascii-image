@@ -1,9 +1,9 @@
 #!/usr/bin/env python3.10
 r"""
 Usage:
-    ascii_image encode <image> [-ub]
-    ascii_image decode <width> <height> <encoded> [-u]
-    ascii_image -h | --help
+    ascii-image encode <image> [-ub]
+    ascii-image decode <width> <height> <encoded> [-u]
+    ascii-image -h | --help
 
 Options:
     -h --help      Show this screen.
@@ -11,12 +11,12 @@ Options:
     -b --base64    Use base64 encoding instead of hex values
 
 Examples:
-    ascii_image decode 19 6 =MxcDA/fNxcDAHFFRUVF1zFycXAw3FycXQURFRAU= -u
-    ascii_image decode 39 3 =Nw01NTMXFzU39wzDRU1NzQ3DTV1RUVEBUVFBUFEB -u
-    ascii_image decode 15 3 0x151515110c0c5cdc3031733 -u
-    ascii_image decode 7 5 0x3e93764be
-    ascii_image encode "@ @    @  @@ @@@@@@@@@ @" -b
-    ascii_image encode 12
+    ascii-image decode 19 6 =MxcDA/fNxcDAHFFRUVF1zFycXAw3FycXQURFRAU= -u
+    ascii-image decode 39 3 =Nw01NTMXFzU39wzDRU1NzQ3DTV1RUVEBUVFBUFEB -u
+    ascii-image decode 15 3 0x151515110c0c5cdc3031733 -u
+    ascii-image decode 7 5 0x3e93764be
+    ascii-image encode "@ @    @  @@ @@@@@@@@@ @" -b
+    ascii-image encode 12
 """
 BLOCK_CHARACTERS = " \u2580\u2584\u2588"
 
