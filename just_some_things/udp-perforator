@@ -1,3 +1,141 @@
 #!/usr/bin/env python3
+r"""
+Usage:
+    udp-perforator beacon <port>
+    udp-perforator server <port> <beacon_address>
+    udp-perforator client <port> <beacon_address>
+    udp-perforator -h | --help
 
-# One day a very cool UDP hole puncher will be here
+Commands:
+    beacon         Starts a beacon on specified port.
+    server         Redirects all UDP packets from a client to
+                   the specified port on localhost.
+    client         All the UDP packets sent to the specified port will
+                   be sent to the server connected to the same beacon.
+
+Options:
+    -h --help      Show this screen.
+
+Examples:
+    udp-perforator server 80 example.com:5432
+"""
+import asyncio
+import random
+import time
+from socket import gethostbyname
+
+
+# TODO: send pings
+class Beacon:
+    def __init__(self):
+        self.clients = {}
+        self.server = None
+        self.client = None
+
+    def connection_made(self, transport):
+        print(f"connection_made({transport})")
+        self.transport = transport
+
+    def datagram_received(self, data, addr):
+        print(f"datagram_received({data}, {addr})")
+        if data == b"ping":
+            self.transport.sendto(b"pong", addr)
+            return
+        elif data == b"I am server":
+            self.server = addr
+        elif data == b"I am client":
+            self.client = addr
+        if self.server and self.client:
+            client, server = self.client, self.server
+            print(f"connecting {client} and {server}")
+            self.transport.sendto(repr_address(client).encode(), server)
+            self.transport.sendto(repr_address(server).encode(), client)
+
+
+class Server:
+    def __init__(self, port, beacon_addres):
+        self.beacon = beacon_addres
+        self.server = ("127.0.0.1", port)
+        self.client = None
+
+    def connection_made(self, transport):
+        print(f"connection_made({transport})")
+        self.transport = transport
+        transport.sendto(b"I am server", self.beacon)
+
+    def datagram_received(self, data, addr):
+        print(f"datagram_received({data}, {addr})")
+        if addr == self.beacon:
+            if data == b"ping":
+                self.transport.sendto(b"pong", self.beacon)
+            else:
+                self.client = parse_address(data.decode())
+        elif self.client:
+            if addr == self.client:
+                self.transport.sendto(data, self.server)
+            elif addr == self.server:
+                self.transport.sendto(data, self.client)
+
+
+class Client:
+    def __init__(self, beacon_addres):
+        self.beacon = beacon_addres
+        self.server = None
+        self.client = None
+
+    def connection_made(self, transport):
+        print(f"connection_made({transport})")
+        self.transport = transport
+        transport.sendto(b"I am client", self.beacon)
+
+    def datagram_received(self, data, addr):
+        print(f"datagram_received({data}, {addr})")
+        if addr == self.beacon:
+            if data == b"ping":
+                self.transport.sendto(b"pong", self.beacon)
+            else:
+                self.server = parse_address(data.decode())
+        elif self.server:
+            if addr == self.server:
+                if self.client:
+                    self.transport.sendto(data, self.client)
+            else:
+                self.client = addr
+                self.transport.sendto(data, self.server)
+
+
+def parse_address(address: str):
+    host, port = address.split(":")
+    return (gethostbyname(host), int(port))
+
+
+def repr_address(address: tuple[str, int]):
+    host, port = address
+    return f"{host}:{port}"
+
+
+async def main(datagram_server, port):
+    local_address = ("0.0.0.0", port if port else random.randint(1024, 2**16))
+    transport, _ = await asyncio.get_running_loop().create_datagram_endpoint(
+        lambda: datagram_server, local_addr=local_address
+    )
+    try:
+        await asyncio.sleep(1e9)
+    except KeyboardInterrupt:
+        pass
+    finally:
+        transport.close()
+
+
+if __name__ == "__main__":
+    args = __import__("docopt").docopt(__doc__)
+    if args["beacon"]:
+        datagram_server, port = Beacon(), int(args["<port>"])
+    else:
+        port = int(args["<port>"])
+        beacon = parse_address(args["<beacon_address>"])
+        if args["server"]:
+            datagram_server, port = Server(port, beacon), None
+        else:
+            datagram_server = Client(beacon)
+    asyncio.run(main(datagram_server, port))
