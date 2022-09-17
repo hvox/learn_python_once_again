@@ -19,10 +19,10 @@ hash = lambda msg: hashlib.sha3_256(msg).digest()
 xor = lambda x, y: bytes(x ^ y for x, y in zip(x, y))
 
 
-def encrypt(password: str, message: bytes) -> bytes:
-    message = hash(message) + message
+def encrypt(password: str, data: bytes) -> bytes:
+    data = hash(data) + data
     result, seed = [], hash(password.encode())
-    for chunk in (message[i : i + 32] for i in range(0, len(message), 32)):
+    for chunk in (data[i : i + 32] for i in range(0, len(data), 32)):
         result.append(xor(chunk, seed))
         seed = hash(seed + chunk + password.encode())
     return b"".join(result)
