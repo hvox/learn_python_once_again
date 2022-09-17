@@ -24,29 +24,32 @@ def xor(x: bytes, y: bytes) -> bytes:
     return bytes(x ^ y for x, y in zip(x, y))
 
 
-def do_the_thing(password: str, message: bytes, action: str):
-    assert action in ("encrypt", "decrypt")
+def encrypt(password: str, message: bytes) -> bytes:
     seed, result = int.from_bytes(hash(password.encode()), "little"), []
-    if action == "encrypt":
-        assert len(hash(message)) == 32
-        message = hash(message) + message
+    message = hash(message) + message
     for i in range(0, len(message), 32):
         secret = hash((seed + i).to_bytes(33, "little"))
         result.append(xor(message[i : i + 32], secret))
-    if action == "decrypt":
-        hash_sum = result.pop(0)
-        if hash_sum != hash(b"".join(result)):
-            raise ValueError("Wrong password")
+    return b"".join(result)
+
+
+def decrypt(password: str, code: bytes) -> bytes:
+    seed, result = int.from_bytes(hash(password.encode()), "little"), []
+    for i in range(0, len(code), 32):
+        secret = hash((seed + i).to_bytes(33, "little"))
+        result.append(xor(code[i : i + 32], secret))
+    hash_sum = result.pop(0)
+    if hash_sum != hash(b"".join(result)):
+        raise ValueError("Wrong password")
     return b"".join(result)
 
 
 if __name__ == "__main__":
     args = __import__("docopt").docopt(__doc__)
-    argument = sys.stdin.buffer.read()
-    action = "encrypt" if args["encode"] else "decrypt"
+    password = args["<password>"]
+    action = encrypt if args["encode"] else decrypt
     try:
-        result = do_the_thing(args["<password>"], argument, action)
-        sys.stdout.buffer.write(result)
+        sys.stdout.buffer.write(action(password, sys.stdin.buffer.read()))
     except ValueError:
         error = "ERROR: Failed to decrypt, since the password is wrong."
         exit("\x1b[31m" + error + "\x1b[0m" if sys.stderr.isatty() else error)
