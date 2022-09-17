@@ -1,0 +1,70 @@
+#!/usr/bin/env python3.10
+r"""
+Usage:
+    permutational-cipher encode <message> <passcode>
+    permutational-cipher decode <code> <passcode>
+    permutational-cipher -h | --help
+
+Commands:
+    encode         Encode message using specified passcode.
+    decode         Use specified passcode in order to decode the code.
+
+Options:
+    -h --help      Show this screen.
+
+Arguments:
+    <passcode>     Number of a permutation to be used by cipher.
+    <message>      Message to be encoded.
+    <code>         Code to be decoded.
+
+Examples:
+    permutational-cipher decode rK88V6YV28L 0x1d45e1a511f13e9a2eb0216144461
+    permutational-cipher encode hello 1234
+"""
+CHARS = "? abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+
+
+def inverse_permutation(permutation: list[int]):
+    inverse = [0] * len(permutation)
+    for v, i in enumerate(permutation):
+        inverse[i] = v
+    return inverse
+
+
+def permutation_to_index(permutation: list[int]):
+    if len(permutation) == 0:
+        return 0
+    index = permutation.index(len(permutation) - 1)
+    perm = permutation_to_index(permutation[:index] + permutation[index + 1 :])
+    return perm * len(permutation) + index
+
+
+def index_to_permutation(permutation_size: int, index: int):
+    if permutation_size == 0:
+        return []
+    p = index_to_permutation(permutation_size - 1, index // permutation_size)
+    p.insert(index % permutation_size, len(p))
+    return p
+
+
+class Cipher:
+    # TODO: support strings as passwords
+    def __init__(self, passcode: int):
+        self.prm = index_to_permutation(len(CHARS), passcode)
+        self.inv = inverse_permutation(self.prm)
+
+    def encrypt(self, message: str):
+        return "".join(CHARS[self.prm[max(CHARS.find(c), 0)]] for c in message)
+
+    def decrypt(self, code: str):
+        return "".join(CHARS[self.inv[max(CHARS.find(c), 0)]] for c in code)
+
+
+if __name__ == "__main__":
+    args = __import__("docopt").docopt(__doc__)
+    pswd = args["<passcode>"]
+    cipher = Cipher(int(pswd[2:], 16) if pswd.startswith("0x") else int(pswd))
+    if args["encode"]:
+        print(cipher.encrypt(args["<message>"]))
+    else:
+        print(cipher.decrypt(args["<code>"]))
