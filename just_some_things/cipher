@@ -15,13 +15,8 @@ Options:
 import hashlib
 import sys
 
-
-def hash(msg: bytes) -> bytes:
-    return hashlib.sha3_256(msg).digest()
-
-
-def xor(x: bytes, y: bytes) -> bytes:
-    return bytes(x ^ y for x, y in zip(x, y))
+hash = lambda msg: hashlib.sha3_256(msg).digest()
+xor = lambda x, y: bytes(x ^ y for x, y in zip(x, y))
 
 
 def encrypt(password: str, message: bytes) -> bytes:
