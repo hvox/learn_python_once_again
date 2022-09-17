@@ -17,7 +17,7 @@ import sys
 
 
 def hash(msg: bytes) -> bytes:
-    return hashlib.sha3_512(msg).digest()
+    return hashlib.sha3_256(msg).digest()
 
 
 def xor(x: bytes, y: bytes) -> bytes:
@@ -28,16 +28,25 @@ def do_the_thing(password: str, message: bytes, action: str):
     assert action in ("encrypt", "decrypt")
     seed, result = int.from_bytes(hash(password.encode()), "little"), []
     if action == "encrypt":
-        message = bytes([len(message) % 256]) + message
-    for i in range(0, len(message), 64):
-        secret = hash((seed + i).to_bytes(128, "little"))
-        result.append(xor(message, secret))
-    return b"".join(result)[1:] if action == "decrypt" else b"".join(result)
+        assert len(hash(message)) == 32
+        message = hash(message) + message
+    for i in range(0, len(message), 32):
+        secret = hash((seed + i).to_bytes(33, "little"))
+        result.append(xor(message[i : i + 32], secret))
+    if action == "decrypt":
+        hash_sum = result.pop(0)
+        if hash_sum != hash(b"".join(result)):
+            raise ValueError("Wrong password")
+    return b"".join(result)
 
 
 if __name__ == "__main__":
     args = __import__("docopt").docopt(__doc__)
     argument = sys.stdin.buffer.read()
     action = "encrypt" if args["encode"] else "decrypt"
-    result = do_the_thing(args["<password>"], argument, action)
-    sys.stdout.buffer.write(result)
+    try:
+        result = do_the_thing(args["<password>"], argument, action)
+        sys.stdout.buffer.write(result)
+    except ValueError:
+        error = "ERROR: Failed to decrypt, since the password is wrong."
+        exit("\x1b[31m" + error + "\x1b[0m" if sys.stderr.isatty() else error)
