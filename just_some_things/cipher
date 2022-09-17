@@ -16,11 +16,11 @@ import hashlib
 import sys
 
 
-def hash(msg: bytes):
+def hash(msg: bytes) -> bytes:
     return hashlib.sha3_512(msg).digest()
 
 
-def xor(x: bytes, y: bytes):
+def xor(x: bytes, y: bytes) -> bytes:
     return bytes(x ^ y for x, y in zip(x, y))
 
 
@@ -32,8 +32,7 @@ def do_the_thing(password: str, message: bytes, action: str):
     for i in range(0, len(message), 64):
         secret = hash((seed + i).to_bytes(128, "little"))
         result.append(xor(message, secret))
-    result = b"".join(result)
-    return result[1:] if action == "decrypt" else result
+    return b"".join(result)[1:] if action == "decrypt" else b"".join(result)
 
 
 if __name__ == "__main__":
