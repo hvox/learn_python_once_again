@@ -25,23 +25,24 @@ def xor(x: bytes, y: bytes) -> bytes:
 
 
 def encrypt(password: str, message: bytes) -> bytes:
-    seed, result = int.from_bytes(hash(password.encode()), "little"), []
     message = hash(message) + message
-    for i in range(0, len(message), 32):
-        secret = hash((seed + i).to_bytes(33, "little"))
-        result.append(xor(message[i : i + 32], secret))
+    result, seed = [], hash(password.encode())
+    for chunk in (message[i : i + 32] for i in range(0, len(message), 32)):
+        result.append(xor(chunk, seed))
+        seed = hash(seed + chunk + password.encode())
     return b"".join(result)
 
 
 def decrypt(password: str, code: bytes) -> bytes:
-    seed, result = int.from_bytes(hash(password.encode()), "little"), []
-    for i in range(0, len(code), 32):
-        secret = hash((seed + i).to_bytes(33, "little"))
-        result.append(xor(code[i : i + 32], secret))
+    result, seed = [], hash(password.encode())
+    for chunk in (code[i : i + 32] for i in range(0, len(code), 32)):
+        result.append(xor(chunk, seed))
+        seed = hash(seed + result[-1] + password.encode())
     hash_sum = result.pop(0)
-    if hash_sum != hash(b"".join(result)):
+    message = b"".join(result)
+    if hash_sum != hash(message):
         raise ValueError("Wrong password")
-    return b"".join(result)
+    return message
 
 
 if __name__ == "__main__":
