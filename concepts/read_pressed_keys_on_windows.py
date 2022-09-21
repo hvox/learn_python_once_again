@@ -1,4 +1,5 @@
 import msvcrt
+from ctypes import windll
 import sys
 import time
 
@@ -71,13 +72,10 @@ CONTROL_CODES = {
 }
 
 
-def next_codepoint(bs: bytes) -> tuple[str, bytes]:
-    if not bs or (i := bin(bs[0])[2:].zfill(8).find("0")) not in (0, 2, 3, 4):
+def next_codepoint(bs: bytes, encoding: str) -> tuple[str, bytes]:
+    if not bs:
         return "", bs
-    length = (0, 2, 3, 4).index(i) + 1
-    if length > len(bs):
-        return "", bs
-    return bs[:length].decode(), bs[length:]
+    return bs[:1].decode(encoding), bs[1:]
 
 
 class NonblockingKeyReader:
@@ -86,16 +84,19 @@ class NonblockingKeyReader:
         self.buffer = b""
 
     def __enter__(self):
+        self.encoding = f"cp{windll.kernel32.GetConsoleOutputCP()}"
         return self
 
     def read_key(self):
         while len(self.buffer) < 5 and msvcrt.kbhit():
             self.buffer += msvcrt.getch()
+        if self.buffer:
+            print("buffer = " + repr(self.buffer))
         for size in range(len(self.buffer), 0, -1):
             if (code := self.buffer[:size]) in CONTROL_CODES:
                 self.buffer = self.buffer[size:]
                 return CONTROL_CODES[code]
-        char, self.buffer = next_codepoint(self.buffer)
+        char, self.buffer = next_codepoint(self.buffer, self.encoding)
         return char
 
     def wait_key(self, timeout: float | None = None):
