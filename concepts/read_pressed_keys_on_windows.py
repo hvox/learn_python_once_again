@@ -72,32 +72,25 @@ CONTROL_CODES = {
 }
 
 
-def next_codepoint(bs: bytes, encoding: str) -> tuple[str, bytes]:
-    if not bs:
-        return "", bs
-    return bs[:1].decode(encoding), bs[1:]
-
-
 class NonblockingKeyReader:
     def __init__(self):
         assert sys.stdin.isatty()
         self.buffer = b""
 
     def __enter__(self):
-        self.encoding = f"cp{windll.kernel32.GetConsoleOutputCP()}"
+        code_page_number = windll.kernel32.GetConsoleOutputCP()
+        self.encoding = f"cp{code_page_number}"
         return self
 
     def read_key(self):
         while len(self.buffer) < 5 and msvcrt.kbhit():
             self.buffer += msvcrt.getch()
-        if self.buffer:
-            print("buffer = " + repr(self.buffer))
         for size in range(len(self.buffer), 0, -1):
             if (code := self.buffer[:size]) in CONTROL_CODES:
                 self.buffer = self.buffer[size:]
                 return CONTROL_CODES[code]
-        char, self.buffer = next_codepoint(self.buffer, self.encoding)
-        return char
+        char, self.buffer = self.buffer[:1], self.buffer[1:]
+        return char.decode(self.encoding)
 
     def wait_key(self, timeout: float | None = None):
         t0 = time.monotonic()
