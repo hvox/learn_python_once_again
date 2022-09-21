@@ -1,6 +1,7 @@
+import ctypes
 import msvcrt
-from ctypes import windll
 import sys
+import threading
 import time
 
 CONTROL_CODES = {
@@ -67,9 +68,20 @@ CONTROL_CODES = {
     b"\x00D": "f10",
     b"\x1b[23~": "f11",
     b"\xe0\x85": "f11",
+    b"\xe0\xc2\x85": "f11",
     b"\x1b[24~": "f12",
     b"\xe0\x86": "f12",
+    b"\xe0\xc2\x86": "f12",
 }
+
+
+def next_codepoint(bs: bytes) -> tuple[str, bytes]:
+    if not bs or (i := bin(bs[0])[2:].zfill(8).find("0")) not in (0, 2, 3, 4):
+        return "", bs
+    length = (0, 2, 3, 4).index(i) + 1
+    if length > len(bs):
+        return "", bs
+    return bs[:length].decode(), bs[length:]
 
 
 class NonblockingKeyReader:
@@ -78,19 +90,34 @@ class NonblockingKeyReader:
         self.buffer = b""
 
     def __enter__(self):
-        code_page_number = windll.kernel32.GetConsoleOutputCP()
-        self.encoding = f"cp{code_page_number}"
+        self.thread = threading.Thread(target=self.msvcrt_loop)
+        self.parent_thread = threading.current_thread()
+        self.thread.daemon = True
+        self.thread_alive = True
+        self.thread.start()
         return self
 
+    def msvcrt_loop(self):
+        while True:
+            char = msvcrt.getwch()
+            if not self.thread_alive:
+                msvcrt.ungetwch(char)
+                return
+            if char == "\x03":
+                if 1 != ctypes.pythonapi.PyThreadState_SetAsyncExc(
+                    ctypes.c_long(self.parent_thread.native_id),
+                    ctypes.py_object(KeyboardInterrupt),
+                ):
+                    raise SystemError("Failed to raise KeyboardInterrupt()")
+            self.buffer += char.encode() if char != "\xe0" else b"\xe0"
+
     def read_key(self):
-        while len(self.buffer) < 5 and msvcrt.kbhit():
-            self.buffer += msvcrt.getch()
         for size in range(len(self.buffer), 0, -1):
             if (code := self.buffer[:size]) in CONTROL_CODES:
                 self.buffer = self.buffer[size:]
                 return CONTROL_CODES[code]
-        char, self.buffer = self.buffer[:1], self.buffer[1:]
-        return char.decode(self.encoding)
+        char, self.buffer = next_codepoint(self.buffer)
+        return char
 
     def wait_key(self, timeout: float | None = None):
         t0 = time.monotonic()
@@ -105,7 +132,7 @@ class NonblockingKeyReader:
             yield key
 
     def __exit__(self, *_):
-        pass
+        self.thread_alive = False
 
 
 with NonblockingKeyReader() as key_reader:
