@@ -1,9 +1,9 @@
 import msvcrt
-import queue
 import os
-import time
+import queue
 import sys
 import threading
+import time
 
 
 class KeyReader:
