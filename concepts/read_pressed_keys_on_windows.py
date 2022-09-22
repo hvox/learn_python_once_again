@@ -12,6 +12,7 @@ class KeyReader:
         assert not self.unix_mode
         self.pressed_keys = queue.Queue()
         self._thread = None
+        self._cmnctn = None
 
     @property
     def running(self):
@@ -19,15 +20,15 @@ class KeyReader:
 
     def start(self):
         assert not self.running, "Can't start running key reader"
-        self._interrupted = [False]
+        self._cmnctn = [False]
         self._thread = threading.Thread(
-            target=read_keys, args=[self._interrupted, self.pressed_keys]
+            target=read_keys, args=[self._cmnctn, self.pressed_keys]
         )
         self._thread.start()
 
     def stop(self):
         assert self.running, "Can't stop stopped key reader"
-        self._interrupted[0] = True
+        self._cmnctn[0] = True
         self._thread.join()
         self._thread = None
 
@@ -42,9 +43,9 @@ class KeyReader:
         assert not self.running, "You forgot to stop key reader"
 
 
-def read_keys(interrupted: list[bool], key_buffer: queue.Queue):
+def read_keys(is_interrupted: list[bool], key_buffer: queue.Queue):
     assert sys.stdin.isatty(), "Stdin does not look like TTY..."
-    while not interrupted[0]:
+    while not is_interrupted[0]:
         if msvcrt.kbhit():
             char = msvcrt.getwch()
             key_buffer.put(char)
@@ -52,10 +53,15 @@ def read_keys(interrupted: list[bool], key_buffer: queue.Queue):
             time.sleep(0.0001)
 
 
-with KeyReader() as key_reader:
-    while True:
-        key = key_reader.pressed_keys.get()
-        print("You pressed " + repr(key))
-        if key == "q":
-            break
-print(repr(input(">>> ")))
+def main():
+    with KeyReader() as key_reader:
+        while True:
+            key = key_reader.pressed_keys.get()
+            print("You pressed " + repr(key))
+            if key == "q":
+                break
+    print(repr(input(">>> ")))
+
+
+if __name__ == "__main__":
+    main()
