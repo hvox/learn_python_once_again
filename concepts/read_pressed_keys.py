@@ -68,6 +68,7 @@ class KeyReader:
 
 
 INPUT_SEQUENCES = {
+    "\x1b": "escape", "\x7f": "backspace", "\x08": "backspace", "\r": "\n",
     "[3~": "delete", "[2~": "insert", "[A": "up", "[D": "left", "[B": "down",
     "[C": "right", "[E": "five", "[G": "five", "[H": "home", "[1~": "home",
     "[F": "end", "[4~": "end", "[5~": "pageup", "[6~": "pagedown", "OP": "f1",
@@ -88,7 +89,7 @@ def parse_input_sequences(chars: str):
     while i < len(chars):
         char = chars[i]
         if char != "\x1b" or i + 1 == len(chars):
-            yield {"\x7f": "backspace", "\x1b": "escape"}.get(char, char)
+            yield INPUT_SEQUENCES.get(char, char)
             i += 1
             continue
         for j in range(i + 5, i + 2, -1):
@@ -137,7 +138,7 @@ def win_read_keys(is_interrupted: list[bool], key_buffer: queue.Queue):
                 char = msvcrt.getwch()
                 char = WINDOWS_INPUT_SEQUENCES.get(char, char)
             else:
-                char = {"\x1b": "escape", "\r": "\n"}.get(char, char)
+                char = INPUT_SEQUENCES.get(char, char)
             key_buffer.put(char)
         else:
             time.sleep(0.001)
