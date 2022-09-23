@@ -43,14 +43,43 @@ class KeyReader:
         assert not self.running, "You forgot to stop key reader"
 
 
+INPUT_SEQUENCES = {
+    "S": "delete",
+    "R": "insert",
+    "H": "up",
+    "K": "left",
+    "P": "down",
+    "M": "right",
+    "G": "home",
+    "O": "end",
+    "I": "pg_up",
+    "Q": "pg_down",
+    ";": "f1",
+    "<": "f2",
+    "=": "f3",
+    ">": "f4",
+    "?": "f5",
+    "@": "f6",
+    "A": "f7",
+    "B": "f8",
+    "C": "f9",
+    "D": "f10",
+    "\x85": "f11",
+    "\x86": "f12",
+}
+
+
 def read_keys(is_interrupted: list[bool], key_buffer: queue.Queue):
     assert sys.stdin.isatty(), "Stdin does not look like TTY..."
     while not is_interrupted[0]:
         if msvcrt.kbhit():
             char = msvcrt.getwch()
-            key_buffer.put(char)
+            if char in "\x00\xe0":
+                char = msvcrt.getwch()
+                char = INPUT_SEQUENCES.get(char, char)
+            key_buffer.put({"\x1b": "escape", "\r": "\n"}.get(char, char))
         else:
-            time.sleep(0.0001)
+            time.sleep(0.001)
 
 
 def main():
