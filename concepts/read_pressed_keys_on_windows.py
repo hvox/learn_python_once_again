@@ -1,3 +1,4 @@
+import contextlib
 import msvcrt
 import os
 import queue
@@ -25,6 +26,20 @@ class KeyReader:
             target=read_keys, args=[self._cmnctn, self.pressed_keys]
         )
         self._thread.start()
+
+    def get_key(self, block=True, timeout=None):
+        # This code is here for Windows compatibility.
+        # Other OSes are ok with native queue.get(), but on Windows we should
+        # emulate blocking queue.get(block=True) since native queue.get() goes
+        # into an uninterruptible wait on an underlying lock.
+        # https://docs.python.org/3/library/queue.html#queue.Queue.get
+        if not block:
+            return self.pressed_keys.get(False)
+        deadline = time.monotonic() + (timeout or float("inf"))
+        while (timeout := deadline - time.monotonic()) > 0.001:
+            with contextlib.suppress(queue.Empty):
+                return self.pressed_keys.get(timeout=0.001)
+        return self.pressed_keys.get(timeout=timeout)
 
     def stop(self):
         assert self.running, "Can't stop stopped key reader"
@@ -85,7 +100,7 @@ def read_keys(is_interrupted: list[bool], key_buffer: queue.Queue):
 def main():
     with KeyReader() as key_reader:
         while True:
-            key = key_reader.pressed_keys.get()
+            key = key_reader.get_key()
             print("You pressed " + repr(key))
             if key == "q":
                 break
