@@ -100,7 +100,7 @@ palette = """
  000000 070707 1f0707 2f0f07 3f0f07 470f07 571707 671f07 771f07 8f2707
  9f2f07 af3f07 bf4707 c74707 df4f07 df5707 df5707 df6707 df5707 d75f07
  d7600a d7670f cf6f0f cf770f cf7f0f cf8717 c78717 c78f17 c7971f bf9f1f
- bf9f1f bfa727 bfa727 bfaf2f b7b72f b7b737 cfcf6f dfdf9f efefc7 ffffff
+ bf9f1f bfa727 bfa727 bfaf2f b7b72f b7b737 cfcf6f dfdf9f efefc7 efefc7
 """
 palette = [
     tuple(int(channel, 16) for channel in (color[:2], color[2:4], color[4:]))
