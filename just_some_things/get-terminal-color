@@ -9,9 +9,9 @@ except ModuleNotFoundError:
     termios = None
 
 
-def get_background_color(timeout=0.1, default_color=(7710, 8738, 10794)):
+def get_background_color(timeout=0.1, default_color=None):
     if not termios:
-        return (3084, 3084, 3084)
+        return default_color
     stdin_fd = sys.stdin.fileno()
     prev_flags = termios.tcgetattr(stdin_fd)
     flags = prev_flags.copy()
@@ -31,8 +31,11 @@ def get_background_color(timeout=0.1, default_color=(7710, 8738, 10794)):
     return default_color
 
 
-red, green, blue = (c / (2**16 - 1) for c in get_background_color())
-print("Current background color: ")
-print(f"    red = {red:.5f}")
-print(f"  green = {green:.5f}")
-print(f"   blue = {blue:.5f}")
+if color := get_background_color():
+    red, green, blue = (c / (2**16 - 1) for c in color)
+    print("Current background color: ")
+    print(f"    red = {red:.5f}")
+    print(f"  green = {green:.5f}")
+    print(f"   blue = {blue:.5f}")
+else:
+    print("Fail to get background color!")
