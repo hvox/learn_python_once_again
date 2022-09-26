@@ -1,0 +1,103 @@
+#!/usr/bin/env python3.10
+import os
+import sys
+import time
+import select
+import contextlib
+from random import randint
+
+try:
+    import termios
+except ModuleNotFoundError:
+    termios = None
+
+UPPER_BLOCK, FULL_BLOCK = "\u2580\u2588"
+
+
+def get_background_color(timeout=0.1, default_color=(7710, 8738, 10794)):
+    if not termios:
+        return (3084, 3084, 3084)
+    stdin_fd = sys.stdin.fileno()
+    prev_flags = termios.tcgetattr(stdin_fd)
+    flags = prev_flags.copy()
+    flags[3] &= ~termios.ICANON & ~termios.ECHO
+    termios.tcsetattr(stdin_fd, termios.TCSANOW, flags)
+    sys.stdout.write("\x1b]11;?\x07")
+    sys.stdout.flush()
+    if select.select([sys.stdin], [], [], timeout)[0] != [sys.stdin]:
+        termios.tcsetattr(stdin_fd, termios.TCSADRAIN, prev_flags)
+        return default_color
+    color = os.read(stdin_fd, 24)[9:23]
+    termios.tcsetattr(stdin_fd, termios.TCSADRAIN, prev_flags)
+    with contextlib.suppress(ValueError):
+        color = tuple(int(color, 16) for color in color.decode().split("/"))
+        if len(color) == 3 and all(0 <= x <= 65535 for x in color):
+            return color
+
+
+class ColorArray2d:
+    def __init__(self, width: int, height: int):
+        self.width, self.height = width, height
+        self.elements = bytearray(width * height * 3)
+
+    def __getitem__(self, index: tuple[int, int]) -> tuple[int, int, int]:
+        i = index[1] % self.height * self.width + index[0] % self.width
+        return tuple(self.elements[3 * i: 3 * i + 3])
+
+    def __setitem__(self, index: tuple[int, int], color: tuple[int, int, int]):
+        i = index[1] % self.height * self.width + index[0] % self.width
+        for j, channel in enumerate(color):
+            self.elements[3 * i + j] = channel
+
+
+class PixelPainter:
+    def __init__(self, width: int, height: int):
+        self.width = width
+        self.height = height
+        self.buffer = ColorArray2d(width, height + height % 2)
+        self.queue = set()
+
+    def __getitem__(self, index: tuple[int, int]) -> int:
+        return self.buffer[index]
+
+    def __setitem__(self, index: tuple[int, int], color: tuple[int, int, int]):
+        if self.buffer[index] != color:
+            self.buffer[index] = color
+            self.queue.add((index[0], index[1] // 2 * 2))
+
+    def show_block(self, line: int, column: int):
+        top = self.buffer[column, self.height - line * 2 - 1]
+        bottom = self.buffer[column, self.height - line * 2 - 2]
+        print(
+            end=f"\x1b[{line + 1};{column + 1}f"
+            + "\x1b[38;2;" + ";".join(map(str, top))
+            + "m\x1b[48;2;" + ";".join(map(str, bottom)) + "m"
+            + UPPER_BLOCK
+        )
+
+    def refresh(self):
+        for x, y in self.queue:
+            self.show_block(self.height // 2 - y // 2 - 1, x)
+        self.queue = set()
+        print(end="\x1b[1;39m\x1b[1;49m")
+
+
+background = tuple(round(x / 257) for x in get_background_color())
+palette = [background] + [
+    tuple(randint(0, 255) for _ in range(3)) for _ in range(255)
+]
+width, height = os.get_terminal_size()
+screen = PixelPainter(w := width, h := height * 2)
+t_start, total_frames, running = time.monotonic(), 0, True
+while running:
+    try:
+        for _ in range(max(1024, w * h // 64)):
+            screen[randint(0, w-1), randint(0, h-1)] = palette[randint(0, 255)]
+        screen.refresh()
+        total_frames += 1
+    except KeyboardInterrupt:
+        print("\x1b[1;39m\x1b[1;49m")
+        running = False
+t_end = time.monotonic()
+fps = total_frames / (t_end - t_start)
+print(f"\rAverage frames per second: {fps}")
