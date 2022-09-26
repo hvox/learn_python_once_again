@@ -57,14 +57,6 @@ class PixelPainter:
         self.buffer = ColorArray2d(width, height + height % 2)
         self.queue = set()
 
-    def __getitem__(self, index: tuple[int, int]) -> int:
-        return self.buffer[index]
-
-    def __setitem__(self, index: tuple[int, int], color: tuple[int, int, int]):
-        if self.buffer[index] != color:
-            self.buffer[index] = color
-            self.queue.add((index[0], index[1] // 2 * 2))
-
     def show_block(self, line: int, column: int):
         top = self.buffer[column, self.height - line * 2 - 1]
         bottom = self.buffer[column, self.height - line * 2 - 2]
@@ -79,7 +71,22 @@ class PixelPainter:
         for x, y in self.queue:
             self.show_block(self.height // 2 - y // 2 - 1, x)
         self.queue = set()
-        print(end="\x1b[1;39m\x1b[1;49m")
+        print(end="\x1b[1;39m\x1b[1;49m", flush=True)
+
+    def __enter__(self):
+        print(end="\x1b7\x1b[?25l")
+        return self
+
+    def __exit__(self, *_):
+        print(end="\x1b8\x1b[?25h\x1b[1;39m\x1b[1;49m")
+
+    def __getitem__(self, index: tuple[int, int]) -> int:
+        return self.buffer[index]
+
+    def __setitem__(self, index: tuple[int, int], color: tuple[int, int, int]):
+        if self.buffer[index] != color:
+            self.buffer[index] = color
+            self.queue.add((index[0], index[1] // 2 * 2))
 
 
 background = tuple(round(x / 257) for x in get_background_color())
@@ -87,17 +94,17 @@ palette = [background] + [
     tuple(randint(0, 255) for _ in range(3)) for _ in range(255)
 ]
 width, height = os.get_terminal_size()
-screen = PixelPainter(w := width, h := height * 2)
-t_start, total_frames, running = time.monotonic(), 0, True
-while running:
-    try:
-        for _ in range(max(1024, w * h // 64)):
-            screen[randint(0, w-1), randint(0, h-1)] = palette[randint(0, 255)]
-        screen.refresh()
-        total_frames += 1
-    except KeyboardInterrupt:
-        print("\x1b[1;39m\x1b[1;49m")
-        running = False
-t_end = time.monotonic()
+with PixelPainter(w := width, h := height * 2) as screen:
+    t_start, total_frames, running = time.monotonic(), 0, True
+    while running:
+        try:
+            for _ in range(max(512, w * h // 64)):
+                color = palette[randint(0, 255)]
+                screen[randint(0, w-1), randint(0, h-1)] = color
+            screen.refresh()
+            total_frames += 1
+        except KeyboardInterrupt:
+            running = False
+    t_end = time.monotonic()
 fps = total_frames / (t_end - t_start)
 print(f"\rAverage frames per second: {fps}")
