@@ -4,6 +4,7 @@ import sys
 import png
 import select
 import contextlib
+
 try:
     import termios
 except ModuleNotFoundError:
@@ -48,8 +49,8 @@ class ByteArray2d:
         self.elements[y * self.width + x] = value
 
 
-def print_image(pixels: ByteArray2d, palette: list[int]):
-    colors = [f"8;2;{r};{g};{b}m" for r, g, b, *_ in palette]
+def print_image(pixels: ByteArray2d, palette: list[tuple[int, int, int]]):
+    colors = [f"8;2;{r};{g};{b}m" for r, g, b in palette]
     bts, w, h = pixels.elements, pixels.width, pixels.height
     for y in range(h - 2, 0, -2):
         for bottom, top in zip(bts[y * w - w: y * w], bts[y * w: y * w + w]):
@@ -60,7 +61,7 @@ def print_image(pixels: ByteArray2d, palette: list[int]):
         print("\x1b[1;39m\x1b[1;49m")
 
 
-def load_image(path: str) -> tuple[ByteArray2d, list[tuple[int, int, int]]]:
+def load_image(path: str) -> tuple[ByteArray2d, list[tuple[int, ...]]]:
     width, height, rows, info = png.Reader(path).read()
     assert info["bitdepth"] == 8 and info["alpha"]
     image, palette = ByteArray2d(width, height), {}
