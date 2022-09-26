@@ -1,7 +1,6 @@
 #!/usr/bin/env python3.10
 import os
 import sys
-import random
 import png
 import select
 import contextlib
@@ -10,10 +9,11 @@ try:
 except ModuleNotFoundError:
     termios = None
 
-FULL_BLOCK = "\u2588"
+UPPER_BLOCK, FULL_BLOCK = "\u2580\u2588"
 
 
 def get_background_color(timeout=0.1, default_color=(7710, 8738, 10794)):
+    # TODO: use more pythonic way to handle optional imports
     if not termios:
         return (3084, 3084, 3084)
     stdin_fd = sys.stdin.fileno()
@@ -34,57 +34,50 @@ def get_background_color(timeout=0.1, default_color=(7710, 8738, 10794)):
             return color
 
 
-def index_to_permutation(permutation_size: int, index: int):
-    if permutation_size == 0:
-        return []
-    p = index_to_permutation(permutation_size - 1, index // permutation_size)
-    p.insert(index % permutation_size, len(p))
-    return p
+class ByteArray2d:
+    def __init__(self, width: int, height: int):
+        self.width, self.height = width, height
+        self.elements = bytearray(width * height)
+
+    def __getitem__(self, index: tuple[int, int]) -> int:
+        x, y = index[0] % self.width, index[1] % self.height
+        return self.elements[y * self.width + x]
+
+    def __setitem__(self, index: tuple[int, int], value: int):
+        x, y = index[0] % self.width, index[1] % self.height
+        self.elements[y * self.width + x] = value
 
 
-def apply_permutation(permutation: list[int], arg: list):
-    result = [None] * len(permutation)
-    for i, x in enumerate(arg):
-        result[permutation[i]] = x
-    return result
+def print_image(pixels: ByteArray2d, palette: list[int]):
+    colors = [f"8;2;{r};{g};{b}m" for r, g, b, *_ in palette]
+    bts, w, h = pixels.elements, pixels.width, pixels.height
+    for y in range(h - 2, 0, -2):
+        for bottom, top in zip(bts[y * w - w: y * w], bts[y * w: y * w + w]):
+            top, bottom = colors[top], colors[bottom]
+            block = " " if top == bottom else UPPER_BLOCK
+            top = "9m" if top == bottom else top
+            print("\x1b[3" + top + "\x1b[4" + bottom + block, end="")
+        print("\x1b[1;39m\x1b[1;49m")
 
 
-def print_color(red: int, green: int, blue: int):
-    print(end=f"\x1b[38;2;{red};{green};{blue}m" + FULL_BLOCK * 2)
-
-
-def print_rgba(red: int, green: int, blue: int, alpha: int, back: list[int]):
-    background = tuple(round(x * (255 - alpha) / 255) for x in back)
-    red = round(red * alpha / 255) + background[0]
-    blue = round(blue * alpha / 255) + background[2]
-    green = round(green * alpha / 255) + background[1]
-    print(end=f"\x1b[38;2;{red};{green};{blue}m" + FULL_BLOCK * 2)
-
-
-def print_random_colors():
-    perm = index_to_permutation(3, random.randint(0, 5))
-    base_color = random.randint(0, 255)
-    for x in range(0, 256, 8):
-        for y in range(0, 256, 8):
-            print_color(*apply_permutation(perm, (x, y, base_color)))
-        print("\x1b[1;39m")
-
-
-def load_png(path: str):
+def load_image(path: str) -> tuple[ByteArray2d, list[tuple[int, int, int]]]:
     width, height, rows, info = png.Reader(path).read()
     assert info["bitdepth"] == 8 and info["alpha"]
-    image = [[None] * width for _ in range(height)]
-    for y, row in enumerate(rows):
-        for x, pixel in enumerate(row[i:i+4] for i in range(0, len(row), 4)):
-            image[y][x] = tuple(pixel)
-    return width, height, image
+    image, palette = ByteArray2d(width, height), {}
+    for y, row in enumerate(map(tuple, rows)):
+        for x, color in enumerate(row[i:i+4] for i in range(0, len(row), 4)):
+            color_index = palette.setdefault(color, len(palette))
+            image.elements[(height - y - 1) * width + x] = color_index
+    return image, palette
 
 
-background = tuple(round(x / 257) for x in get_background_color())
-for path in sys.argv[1:]:
-    width, height, pixels = load_png(path)
-    print("width:", width, " height:", height)
-    for row in pixels:
-        for red, green, blue, alpha in row:
-            print_rgba(red, green, blue, alpha, background)
-        print("\x1b[1;39m")
+def blend(x: tuple[int, ...], y: tuple[int, ...], alpha: int):
+    return tuple((x * alpha + y * (255 - alpha)) // 255 for x, y in zip(x, y))
+
+
+if __name__ == "__main__":
+    background = tuple(round(x / 257) for x in get_background_color())
+    for path in sys.argv[1:]:
+        pixels, palette = load_image(path)
+        palette = [blend((r, g, b), background, a) for r, g, b, a in palette]
+        print_image(pixels, palette)
