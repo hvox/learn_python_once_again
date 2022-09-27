@@ -1,0 +1,122 @@
+#!/usr/bin/env python3
+import os
+import time
+import queue
+import contextlib
+from random import randint
+from keyreader import KeyReader
+
+UPPER_BLOCK, FULL_BLOCK = "\u2580\u2588"
+APPLE_COLOR = (255, 0, 255)
+
+
+class ColorArray2d:
+    def __init__(self, width: int, height: int):
+        self.width, self.height = width, height
+        self.elements = bytearray(width * height * 3)
+
+    def __getitem__(self, index: tuple[int, int]) -> tuple[int, int, int]:
+        i = index[1] % self.height * self.width + index[0] % self.width
+        return tuple(self.elements[3 * i: 3 * i + 3])
+
+    def __setitem__(self, index: tuple[int, int], color: tuple[int, int, int]):
+        i = index[1] % self.height * self.width + index[0] % self.width
+        for j, channel in enumerate(color):
+            self.elements[3 * i + j] = channel
+
+
+class PixelPainter:
+    def __init__(self, width: int, height: int):
+        self.width = width
+        self.height = height + height % 2
+        self.buffer = ColorArray2d(self.width, self.height)
+        self.queue = set()
+
+    def show_block(self, line: int, column: int):
+        top = self.buffer[column, self.height - line * 2 - 1]
+        bottom = self.buffer[column, self.height - line * 2 - 2]
+        print(
+            end=f"\x1b[{line + 1};{column + 1}f"
+            + "\x1b[38;2;" + ";".join(map(str, top))
+            + "m\x1b[48;2;" + ";".join(map(str, bottom)) + "m"
+            + UPPER_BLOCK
+        )
+
+    def refresh(self):
+        for x, y in self.queue:
+            self.show_block(self.height // 2 - y // 2 - 1, x)
+        self.queue = set()
+        print(end="\x1b[1;39m\x1b[1;49m", flush=True)
+
+    def __enter__(self):
+        print(end="\x1b7\x1b[?25l")
+        for line in range(self.height // 2):
+            for column in range(self.width):
+                self.show_block(line, column)
+        return self
+
+    def __exit__(self, *_):
+        print(end="\x1b8\x1b[?25h\x1b[1;39m\x1b[1;49m")
+
+    def __getitem__(self, index: tuple[int, int]) -> tuple[int, int, int]:
+        index = (index[0] % self.width, index[1] % self.height)
+        return self.buffer[index]
+
+    def __setitem__(self, index: tuple[int, int], color: tuple[int, int, int]):
+        index = (index[0] % self.width, index[1] % self.height)
+        if self.buffer[index] != color:
+            self.buffer[index] = color
+            self.queue.add((index[0], index[1] // 2 * 2))
+
+
+width, height = os.get_terminal_size()
+screen = PixelPainter(width := width, height := height * 2)
+apples = {(randint(0, width - 1), randint(0, height - 1)) for _ in range(1)}
+for apple in apples:
+    screen[apple] = (randint(16, 255), 0, randint(16, 255))
+with screen, KeyReader() as key_reader:
+    start = (10, 10)
+    snake_length = 1
+    snake = {x: start for x in range(snake_length)}
+    blocked = {start}
+    snake_iteration = len(snake) - 1
+    direction = (1, 0)
+    state = "running"
+    while state == "running":
+        old_direction = direction
+        with contextlib.suppress(queue.Empty):
+            while key := key_reader.get_key(block=False):
+                if key == "down":
+                    direction = (0, -1)
+                elif key == "up":
+                    direction = (0, 1)
+                elif key == "left":
+                    direction = (-1, 0)
+                elif key == "right":
+                    direction = (1, 0)
+        if sum(x * y for x, y in zip(old_direction, direction)) == -1:
+            direction = old_direction
+        head = tuple(x + y for x, y in zip(snake[snake_iteration], direction))
+        head = (head[0] % width, head[1] % height)
+        snake_iteration += 1
+        snake[snake_iteration] = head
+        if head in blocked:
+            state = "fail"
+        blocked.add(head)
+        if head in apples:
+            snake_length += 1
+            apples.remove(head)
+            for _ in range(randint(1, 2)):
+                apple = (randint(0, width - 1), randint(0, height - 1))
+                screen[apple] = (randint(16, 255), 0, randint(16, 255))
+                apples.add(apple)
+        else:
+            tail = snake.pop(snake_iteration - snake_length)
+            if tail in blocked:
+                blocked.remove(tail)
+            screen[tail] = (0, 0, 0)
+        screen[head] = (255, 255, 255)
+        screen.refresh()
+        time.sleep(0.015 * 4)
+if state == "fail":
+    print("You have died!")
