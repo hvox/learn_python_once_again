@@ -1,0 +1,107 @@
+#!/usr/bin/env python3.10
+r"""
+Usage:
+    pixelfont <path>
+    pixelfont -h | --help
+
+Arguments:
+    path           Path to the png file with a font
+
+Options:
+    -h --help      Show this screen.
+"""
+# TODO: add examples to the docstring
+import png
+from pathlib import Path
+
+BLOCK_CHARS = " \u2584\u2580\u2588"
+PRINTABLE_CHARS = (
+    " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOP"
+    + "QRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~"
+)
+
+
+class Font:
+    def __init__(self, characters: list[bytes]):
+        assert all(0 <= column <= 127 for column in b"".join(characters))
+        assert len(characters) == 95
+        self.characters = characters
+
+    def __contains__(self, s: str):
+        return all(32 <= ord(char) <= 126 for char in s)
+
+    def __getitem__(self, char: str):
+        return self.characters[ord(char) - 32]
+
+    def __repr__(self):
+        return f"{__class__.__qualname__}({self.characters})"
+
+    def get_width(self, text: str):
+        return sum(len(self[char]) for char in text)
+
+    def save(self, path: Path | str):
+        width = 1 + sum(self.get_width(char) + 3 for char in PRINTABLE_CHARS)
+        height = 11
+        rows = [[2] for _ in range(height)]
+        for char in PRINTABLE_CHARS:
+            for column in [0] + list(self[char]) + [0]:
+                rows[0].append(2)
+                rows[1].append(0)
+                for i, y in enumerate(range(6, -1, -1), 2):
+                    rows[i].append(column >> y & 1)
+                rows[~1].append(0)
+                rows[~0].append(2)
+            for i in range(height):
+                rows[i].append(2)
+        palette = [(0x00, 0x00, 0x00), (0x00, 0xFF, 0xFF), (0xFF, 0x00, 0xFF)]
+        png.Writer(width, height, palette=palette).write(
+            Path(path).open("wb"), rows
+        )
+
+    @staticmethod
+    def load(path: Path | str):
+        png_reader = png.Reader(file=Path(path).open("rb"))
+        width, height, rows, _ = png_reader.asRGB8()
+        pixels = tuple(
+            tuple(tuple(row[i: i + 3]) for i in range(0, len(row), 3))
+            for row in rows
+        )
+        marker_color, background_color = pixels[0][0], pixels[1][1]
+        font, x0, y0 = [], 0, 0
+        while len(font) < 95 and x0 < width and y0 < height:
+            character = []
+            x_next = x0 + 1
+            while x_next < width and pixels[y0 + 1][x_next] != marker_color:
+                x_next += 1
+            for x in range(x0 + 2, x_next - 1):
+                column = []
+                for y in range(y0 + 8, y0 + 1, -1):
+                    column.append(pixels[y][x] != background_color)
+                character.append(sum(x * 2**i for i, x in enumerate(column)))
+            font.append(bytes(character))
+            x0 = x_next
+            while x0 < width - 1 and pixels[y0 + 1][x0 + 1] == marker_color:
+                x0 += 1
+            if x0 >= width - 3:
+                x0, y0 = 0, y0 + 10
+        return Font(font)
+
+
+def display(message: str, font: Font):
+    assert message in font
+    for y in range(3, -1, -1):
+        yield " ".join(
+            "".join(BLOCK_CHARS[col >> 2 * y & 3] for col in font[char])
+            for char in message
+        )
+
+
+if __name__ == "__main__":
+    args = __import__("docopt").docopt(__doc__)
+    font = Font.load(args["<path>"])
+    print("Successfully loaded font", repr(args["<path>"]), "->", font)
+    while line := input(">>> "):
+        for line in display(line, font=font):
+            print(" " + line)
+        print()
+    font.save("font.backup.png")
