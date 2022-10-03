@@ -25,7 +25,7 @@ running = True
 while running:
     try:
         pretty_print(time.strftime("%H:%M:%S", time.localtime()))
-        time.sleep(1)
+        time.sleep(1.001 - time.time() % 1)
     except KeyboardInterrupt or Exception:
         print("\033[?25h")
         running = False
