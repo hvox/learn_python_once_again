@@ -98,8 +98,9 @@ def display(message: str, font: Font):
 
 if __name__ == "__main__":
     args = __import__("docopt").docopt(__doc__)
+    print(end="loading...", flush=True)
     font = Font.load(args["<path>"])
-    print("Successfully loaded font", repr(args["<path>"]), "->", font)
+    print("\rSuccessfully loaded font", repr(args["<path>"]), "->", font)
     while line := input(">>> "):
         for line in display(line, font=font):
             print(" " + line)
