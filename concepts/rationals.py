@@ -24,3 +24,10 @@ class Rational(Fraction):
             return digits[0] + "." + "".join(digits[1:])
         digits = list(map(str, list(self.digits(int(fmt[1:])))))
         return digits[0] + "." + digits[1] + "".join(digits[2:]).rstrip("0")
+
+    def __round__(self, ndigits=None):
+        if ndigits is None:
+            return round(Fraction(self))
+        numerator, denominator = self.as_integer_ratio()
+        number = round(Fraction(numerator * 4 + 1, denominator * 4), ndigits)
+        return number if ndigits is None else __class__(number)
