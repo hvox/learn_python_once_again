@@ -16,7 +16,10 @@ class Rational(Fraction):
     def __format__(self, fmt):
         if not fmt:
             return str(self)
-        assert fmt[0] == "." and fmt[-1] == "f"
-        *digits, last = list(islice(self.digits(), 2 + int(fmt[1:-1])))
+        assert fmt[0] == "."
+        precision = int(fmt[1:-1] if fmt[-1] == "f" else fmt[1:])
+        *digits, last = list(islice(self.digits(), 2 + precision))
         digits[-1] += last >= 5
+        while fmt[-1] != "f" and len(digits) > 2 and digits[-1] == 0:
+            digits.pop()
         return str(digits[0]) + "." + "".join(map(str, digits[1:]))
