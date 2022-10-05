@@ -3,23 +3,24 @@ from itertools import islice
 
 
 class Rational(Fraction):
-    def digits(self):
+    def digits(self, precision: None | int = None):
+        if precision is not None:
+            *digits, last = list(islice(self.digits(), 2 + precision))
+            digits[-1] += last >= 5
+            yield from digits
+            return
         numerator, denominator = self.as_integer_ratio()
-        integer, fractional = divmod(numerator, denominator)
-        yield integer
-        while fractional:
-            fractional *= 10
-            integer, fractional = divmod(fractional, denominator)
-            yield integer
+        while numerator:
+            yield numerator // denominator
+            numerator = numerator % denominator * 10
         yield from iter(int, None)
 
     def __format__(self, fmt):
         if not fmt:
             return str(self)
         assert fmt[0] == "."
-        precision = int(fmt[1:-1] if fmt[-1] == "f" else fmt[1:])
-        *digits, last = list(islice(self.digits(), 2 + precision))
-        digits[-1] += last >= 5
-        while fmt[-1] != "f" and len(digits) > 2 and digits[-1] == 0:
-            digits.pop()
-        return str(digits[0]) + "." + "".join(map(str, digits[1:]))
+        if fmt[-1] == "f":
+            digits = list(map(str, list(self.digits(int(fmt[1:-1])))))
+            return digits[0] + "." + "".join(digits[1:])
+        digits = list(map(str, list(self.digits(int(fmt[1:])))))
+        return digits[0] + "." + digits[1] + "".join(digits[2:]).rstrip("0")
