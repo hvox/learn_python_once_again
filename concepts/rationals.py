@@ -1,4 +1,5 @@
 """Rational numbers."""
+import itertools
 import math
 import numbers
 
@@ -62,6 +63,18 @@ class Rational(numbers.Rational):
     def __repr__(self):
         return f'{self.__class__.__qualname__}("{str(self)}")'
 
+    def digits(self, precision: None | int = None):
+        if precision is not None:
+            *digits, last = itertools.islice(self.digits(), 2 + precision)
+            digits[-1] += last >= 5
+            yield from digits
+            return
+        numerator, denominator = self.as_integer_ratio()
+        while numerator:
+            yield numerator // denominator
+            numerator = numerator % denominator * 10
+        yield from iter(int, None)
+
     def __str__(self):
         if self.denominator == 1:
             return str(self.numerator)
@@ -82,6 +95,17 @@ class Rational(numbers.Rational):
             return "-" * (self.numerator < 0) + integer + "." + fractional
         else:
             return f"{self.numerator}/{self.denominator}"
+
+    def __format__(self, fmt):
+        print("__format__", repr(fmt))
+        if not fmt:
+            return str(self)
+        assert fmt[0] == "."
+        if fmt[-1] == "f":
+            digits = list(map(str, list(self.digits(int(fmt[1:-1])))))
+            return digits[0] + "." + "".join(digits[1:])
+        digits = list(map(str, list(self.digits(int(fmt[1:])))))
+        return digits[0] + "." + digits[1] + "".join(digits[2:]).rstrip("0")
 
     def __add__(self, other):
         x, y = as_integer_ratio(self)
