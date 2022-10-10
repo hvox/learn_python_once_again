@@ -1,4 +1,5 @@
-import time
+from time import sleep
+from datetime import datetime
 
 CHARS = " 0123456789:"
 CHARS_ART = """
@@ -24,8 +25,9 @@ print("\033[?25l\n\n\n")
 running = True
 while running:
     try:
-        pretty_print(time.strftime("%H:%M:%S", time.localtime()))
-        time.sleep(1.001 - time.time() % 1)
+        current_time = datetime.now()
+        pretty_print(current_time.strftime("%H:%M:%S"))
+        sleep(1 - current_time.microsecond / 1e6)
     except KeyboardInterrupt or Exception:
         print("\033[?25h")
         running = False
