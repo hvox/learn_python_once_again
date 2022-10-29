@@ -44,7 +44,7 @@ class Iter:
         return tuple(itertools.islice(self._iterator, size))
 
     def count(self):
-        return itertools.count(self)
+        return itertools.count(self._iterator)
 
     def last(self, default=StopIteration()):
         with contextlib.suppress(ValueError):
@@ -91,25 +91,25 @@ class Iter:
         return Iter(map(f, self._iterator))
 
     def filter(self, predicate):
-        return Iter(element for element in self if predicate(element))
+        return Iter(x for x in self._iterator if predicate(x))
 
     def cat(self):
         return Iter(x for xs in self._iterator for x in xs)
 
     def enumerate(self, start=0):
-        return Iter(enumerate(self, start=start))
+        return Iter(enumerate(self._iterator, start=start))
 
     def skip_while(self, predicate):
-        return Iter(itertools.skip_while(self, predicate))
+        return Iter(itertools.skip_while(self._iterator, predicate))
 
     def take_while(self, predicate):
-        return Iter(itertools.takewhile(self, predicate))
+        return Iter(itertools.takewhile(self._iterator, predicate))
 
     def skip(self, n):
         return Iter(itertools.skip(self._iterator, n))
 
     def take(self, n):
-        return Iter(itertools.islice(self, 0, n))
+        return Iter(itertools.islice(self._iterator, 0, n))
 
     def scan(self, initial, f):
         def generator():
@@ -132,16 +132,16 @@ class Iter:
         return value
 
     def all(self, predicate=bool):
-        return all(map(predicate, self))
+        return all(map(predicate, self._iterator))
 
     def any(self, predicate=bool):
-        return any(map(predicate, self))
+        return any(map(predicate, self._iterator))
 
     def cycle(self):
-        return Iter(itertools.cycle(self))
+        return Iter(itertools.cycle(self._iterator))
 
     def rev(self):
-        return Iter(reversed(self._iterator))
+        return Iter(reversed(list(self._iterator)))
 
     def smap(self, f):
         return Iter(itertools.starmap(f, self._iterator))
