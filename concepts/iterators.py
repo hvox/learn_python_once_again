@@ -27,6 +27,12 @@ class Iter:
     def __next__(self):
         return next(self._iterator)
 
+    def __mult__(self, other):
+        return Iter(itertools.product(self._iterator, other))
+
+    def __pow__(self, n):
+        return Iter(itertools.product(self._iterator, repeat=n))
+
     def next(self, default=StopIteration()):
         with contextlib.suppress(StopIteration):
             return next(self._iterator)
@@ -100,7 +106,7 @@ class Iter:
         return Iter(itertools.takewhile(self, predicate))
 
     def skip(self, n):
-        return Iter(itertools.skip(self._iterator))
+        return Iter(itertools.skip(self._iterator, n))
 
     def take(self, n):
         return Iter(itertools.islice(self, 0, n))
