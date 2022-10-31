@@ -40,22 +40,25 @@ class Font:
         return sum(len(self[char]) for char in text)
 
     def save(self, path: Path | str):
-        width = 1 + sum(self.get_width(char) + 3 for char in PRINTABLE_CHARS)
-        height = 11
-        rows = [[2] for _ in range(height)]
-        for char in PRINTABLE_CHARS:
-            for column in [0] + list(self[char]) + [0]:
-                rows[0].append(2)
-                rows[1].append(0)
-                for i, y in enumerate(range(6, -1, -1), 2):
-                    rows[i].append(column >> y & 1)
-                rows[~1].append(0)
-                rows[~0].append(2)
-            for i in range(height):
-                rows[i].append(2)
+        png_rows = [[]]
+        char_rows = [PRINTABLE_CHARS[i:i+32] for i in range(0, len(PRINTABLE_CHARS), 32)]
+        width = 1 + max(sum(self.get_width(char) + 3 for char in row) for row in char_rows)
+        height = 1 + 10 * len(char_rows)
+        for chars in char_rows:
+            rows = [[2] for _ in range(10)]
+            for char in chars:
+                for column in [0] + list(self[char]) + [0]:
+                    rows[0].append(0)
+                    for i, y in enumerate(range(6, -1, -1), 1):
+                        rows[i].append(column >> y & 1)
+                    rows[~1].append(0)
+                    rows[~0].append(2)
+                for i in range(10):
+                    rows[i].append(2)
+            png_rows.extend(rows)
         palette = [(0x00, 0x00, 0x00), (0x00, 0xFF, 0xFF), (0xFF, 0x00, 0xFF)]
         png.Writer(width, height, palette=palette).write(
-            Path(path).open("wb"), rows
+            Path(path).open("wb"), [row + [2] * (width - len(row)) for row in png_rows]
         )
 
     @staticmethod
@@ -106,3 +109,4 @@ if __name__ == "__main__":
             print(" " + line)
         print()
     font.save("font.backup.png")
+    print("\rFont was successfully saved into ./font.backup.png")
