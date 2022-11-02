@@ -134,11 +134,16 @@ for n in range(1, 11):
     print(f"\n  n = {n}")
     table = []
     fails = []
+    set_fails = []
     for tree_name, f in trees:
         tree = list(f(n))
         table.append([tree_name + ":"] + list(map(str, tree)))
         if not set(farey_sequence(n)) <= set(tree):
             fails.append(tree_name)
+        if len(set(tree)) != len(tree):
+            set_fails.append(tree_name)
     if fails:
         print("Failed Farey test:", ", ".join(fails))
+    if set_fails:
+        print("Failed element uniqueness test:", ", ".join(fails))
     print_table(table, "  ")
