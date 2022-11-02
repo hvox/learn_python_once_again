@@ -96,18 +96,20 @@ def khamkou_left_subtree_v4(n: int):
     yield from list(khamkou_tree_v4(n))[: 2 ** (n - 1)]
 
 
-def khamkou_tree_v5(n: int, left=(0, 1), right=(1, 0), balance=0):
-    center = tuple(x * 2**max(0, -balance) + y * 2**max(0, balance) for x, y in zip(left, right))
-    if n > 1:
-        yield from khamkou_tree_v5(n - 1, left, center, min(balance - 1, 0))
-    yield Fraction(*center)
-    if n > 1:
-        yield from khamkou_tree_v5(n - 1, center, right, max(balance + 1, 0))
+def khamkou_tree_v5(n: int):
+    def p(x):
+        return 2 ** max(x, 0)
+    tree = [(0, 1, 0), (1, 0, 0)]
+    for _ in range(n):
+        tree = list(map(lambda x: x, sum((
+            [(x0 * p(p0) + x1 * p(p1), y0 * p(p0) + y1 * p(p1), 0), (x1, y1, p1 + 1)]
+            for ((x0, y0, p0), (x1, y1, p1)) in zip(tree, tree[1:])
+        ), [tree[0][:2] + (tree[0][2] + 1,)])))
+    yield from (Fraction(x, y) for x, y, _ in tree[:~0])
 
 
 def khamkou_left_subtree_v5(n: int):
-    yield Fraction(0)
-    yield from list(khamkou_tree_v5(n))[: 2 ** (n - 1)]
+    yield from list(khamkou_tree_v5(n))[: 2 ** (n - 1) + 1]
 
 
 def print_table(rows: list[str], sep=" "):
@@ -125,8 +127,8 @@ trees = [
     ("Khamkou(V1)", khamkou_left_subtree_v1),
     ("Khamkou(V2)", khamkou_left_subtree_v2),
     ("Khamkou(V3)", khamkou_left_subtree_v3),
-    ("Khamkou(V4)", khamkou_left_subtree_v4),
-    # ("Khamkou(V5)", khamkou_left_subtree_v5),
+    ("Khamkou(V4)", khamkou_left_subtree_v4),  # my favorite
+    ("Khamkou(V5)", khamkou_left_subtree_v5),
 ]
 for n in range(1, 11):
     print(f"\n  n = {n}")
