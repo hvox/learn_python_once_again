@@ -1,0 +1,44 @@
+#!/usr/bin/env python3.11
+r"""
+Usage:
+    find-word <word> [MEASURE]
+    find-word -h | --help
+
+Arguments:
+    measure must be one of these:
+    - Levenshtein
+    - letter-set
+
+Options:
+    -h --help      Show this screen.
+"""
+from pathlib import Path
+
+WORDS = (Path(__file__).parent / "../data/words.txt").resolve().read_text().strip().split()
+
+
+def levenshtein_distance(w1: str, w2: str):
+    row = [j for j in range(len(w2) + 1)]
+    for i in range(len(w1)):
+        old_row, row = row, [i + 1]
+        for j in range(1, len(w2) + 1):
+            row.append(min(old_row[j] + 1, row[j - 1] + 1, old_row[j - 1] + (w1[i] != w2[j - 1])))
+    return row[len(w2)]
+
+
+def letterset_distance(w1: str, w2: str):
+    return len(set(w1).symmetric_difference(set(w2)))
+
+
+DISTANCE_MEASURES = {
+    "Levenshtein": levenshtein_distance,
+    "letter-set": letterset_distance,
+}
+if __name__ == "__main__":
+    args = __import__("docopt").docopt(__doc__)
+    needle, measure = args["<word>"], DISTANCE_MEASURES[args["MEASURE"] or "Levenshtein"]
+    words = WORDS.copy()
+    print("searching...")
+    words.sort(key=lambda s: measure(s, needle))
+    for word in words[:20]:
+        print(measure(needle, word), word)
