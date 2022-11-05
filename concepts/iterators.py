@@ -1,6 +1,7 @@
-import typing
-import itertools
 import contextlib
+import functools
+import itertools
+import typing
 
 
 class Iter:
@@ -156,4 +157,7 @@ class Iter:
         return Iter(itertools.starmap(f, self._iterator))
 
 
-# TODO: peakable iterator: https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.peekable
+def generator(f):
+    gen = lambda *args, **kwargs: Iter(f(*args, **kwargs))
+    functools.update_wrapper(gen, f)
+    return gen
