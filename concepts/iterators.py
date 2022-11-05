@@ -27,6 +27,15 @@ class Iter:
     def __next__(self):
         return next(self._iterator)
 
+    def __add__(self, other):
+        return self.chain(other)
+
+    def __and__(self, other):
+        return Iter(zip(self._iterator, other))
+
+    def __or__(self, other):
+        return Iter(itertools.zip_longest(self._iterator, other))
+
     def __mult__(self, other):
         return Iter(itertools.product(self._iterator, other))
 
