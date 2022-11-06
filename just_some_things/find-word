@@ -13,6 +13,7 @@ Options:
     -h --help      Show this screen.
 """
 from pathlib import Path
+from collections import Counter
 
 WORDS = (Path(__file__).parent / "../data/words.txt").resolve().read_text().strip().split()
 
@@ -27,7 +28,11 @@ def levenshtein_distance(w1: str, w2: str):
 
 
 def letterset_distance(w1: str, w2: str):
-    return len(set(w1).symmetric_difference(set(w2)))
+    c1, c2 = Counter(w1), Counter(w2)
+    distance = 0
+    for char in set(c1.keys()) | set(c2.keys()):
+        distance += abs(c1.get(char, 0) - c2.get(char, 0))
+    return distance
 
 
 DISTANCE_MEASURES = {
