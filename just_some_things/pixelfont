@@ -1,7 +1,7 @@
 #!/usr/bin/env python3.10
 r"""
 Usage:
-    pixelfont <path>
+    pixelfont [PATH]
     pixelfont -h | --help
 
 Arguments:
@@ -90,6 +90,24 @@ class Font:
         return Font(font)
 
 
+DEFAULT_FONT = Font([
+    b"\x00\x00\x00", b":", b"`\x00`", b"\x14>\x14>\x14", b"\x1ak,", b"\x12\x04\x08\x12",
+    b"\x12.:$", b"`", b">A", b"A>", b"\x14\x08\x14", b"\x08\x1c\x08", b"\x03", b"\x08\x08\x08",
+    b"\x02", b"\x06\x18`", b'>">', b'">\x02', b".*:", b"**>", b"8\x08>", b":*.", b">*.", b" &8",
+    b">*>", b":*>", b"\x14", b"\x16", b'\x08\x14"', b"\x14\x14\x14", b'"\x14\x08', b" *0",
+    b'\x1c"*\x1a', b">(>", b">*6", b'>"6', b'>"\x1c', b'>*"', b">( ", b'>".', b">\x08>", b'">"',
+    b"\x06\x02>", b">\x086", b">\x02\x02", b">\x10\x08\x10>", b">\x08\x04>", b'\x1e"<', b">(8",
+    b'>"?', b">(6", b"\x1a*,", b" > ", b"<\x02>", b"<\x02<", b"<\x02<\x02<", b"6\x086", b"0\x0e0",
+    b"&*2", b"\x7fA", b"`\x18\x06", b"A\x7f", b"\x08\x10\x08", b"\x01\x01\x01", b"@ ",
+    b"\x16\x12\x1e", b"~\x12\x1e", b"\x1e\x12\x12", b"\x1e\x12~", b"\x1e\x12\x1a", b"\x10~P",
+    b"\x1c\x15\x1f", b"~\x10\x1e", b"^", b"\x01_", b"~\x04\x1a", b">", b"\x1e\x10\x1e\x10\x0e",
+    b"\x1e\x10\x0e", b"\x1e\x12\x1e", b"\x1f\x12\x1e", b"\x1e\x12\x1f", b"\x1e\x10\x18",
+    b"\x1a\x12\x16", b"\x10>\x12", b"\x1c\x02\x1e", b"\x1c\x02\x1c", b"\x1c\x02\x1c\x02\x1c",
+    b"\x1a\x04\x1a", b"\x1d\x05\x1e", b"\x16\x12\x1a", b"\x08wA", b"\x7f", b"Aw\x08",
+    b"\x04\x0c\x08",
+])
+
+
 def display(message: str, font: Font):
     assert message in font
     for y in range(3, -1, -1):
@@ -100,13 +118,13 @@ def display(message: str, font: Font):
 
 
 if __name__ == "__main__":
+    font = DEFAULT_FONT
     args = __import__("docopt").docopt(__doc__)
-    print(end="loading...", flush=True)
-    font = Font.load(args["<path>"])
-    print("\rSuccessfully loaded font", repr(args["<path>"]), "->", font)
+    if path := args["PATH"]:
+        print(end="loading...", flush=True)
+        font = Font.load(path)
+        print("\rSuccessfully loaded font", repr(path))
     while line := input(">>> "):
         for line in display(line, font=font):
             print(" " + line)
         print()
-    font.save("font.backup.png")
-    print("\rFont was successfully saved into ./font.backup.png")
