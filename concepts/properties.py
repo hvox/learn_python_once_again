@@ -1,4 +1,4 @@
-from functools import cache
+from functools import cached_property
 
 
 class A:
@@ -10,8 +10,7 @@ class A:
         print("twice() was called!")
         return self.value * 2
 
-    @property
-    @cache
+    @cached_property
     def triple(self):
         print("triple() was called!")
         return self.value * 3
