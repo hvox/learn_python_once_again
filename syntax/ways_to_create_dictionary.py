@@ -12,3 +12,7 @@ dict2 = {0: "hello, world!", 1: "ohnter antohrea ntheorant rhoetar hoetrn"}
 dict2 |= {2: "ntohera", 3: None, 4: "to be continued"}
 dict2[3] = dict2
 print(f"{dict2=}")
+
+dict3 = dict(a="hello, world!", b="ohnter", c="bla bla bla")
+dict3[3] = dict3
+print(f"{dict3=}")
