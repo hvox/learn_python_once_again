@@ -1,5 +1,9 @@
 #!/usr/bin/env -S make -f
 
+python: Python-3.11.0.tar.xz
+	tar -vxf Python-3.11.0.tar.xz
+	( cd Python-3.11.0 && ./configure --enable-optimizations --prefix="${HOME}/.local/" && make install )
+
 python-3.11: Python-3.11.0.tar.xz
 	tar -vxf Python-3.11.0.tar.xz
 	( cd Python-3.11.0 && ./configure --enable-optimizations --prefix="${HOME}/.local/" && make altinstall )
