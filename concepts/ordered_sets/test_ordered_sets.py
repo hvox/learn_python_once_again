@@ -3,6 +3,7 @@ from time import monotonic as time
 
 from elia_robyn_lake_sets import OrderedSet as rsset
 from just_list_and_dict import OrderedSet as jtset
+from my_indexed_set import IndexedSet as iset
 from native_raymond_hettinger_dict_based_sets import OrderedSet as odset
 from native_raymond_hettinger_dict_based_sets_by_me import OrderedSet as hxset
 from native_raymond_hettinger_dict_based_sets_by_xavier import OrderedSet as xvset
@@ -29,6 +30,7 @@ implementations = [
     ("RH dicts in wrapper made by Xavier", xvset),
     ("RH dicts in wrapper made by me", hxset),
     ("Just list[T] and dict[T, int] together", jtset),
+    ("My IndexedSet", iset),
     ("Unordered set", set),
 ]
 for implementation_name, Set in implementations:
