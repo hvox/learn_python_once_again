@@ -1,0 +1,52 @@
+# from math import inf as infinity
+from time import monotonic as time
+
+from elia_robyn_lake_sets import OrderedSet as rsset
+from just_list_and_dict import OrderedSet as jtset
+from native_raymond_hettinger_dict_based_sets import OrderedSet as odset
+from native_raymond_hettinger_dict_based_sets_by_me import OrderedSet as hxset
+from native_raymond_hettinger_dict_based_sets_by_xavier import OrderedSet as xvset
+from raymond_hettinger_dict_based_sets import OrderedSet as dbset
+from raymond_hettinger_dict_based_sets_without_arrays import OrderedSet as waset
+from raymond_hettinger_sets import OrderedSet as rhset
+
+
+def time_it(iterable, f, time_limit=2):
+    start_time = time()
+    for x in iterable:
+        f(x)
+        if time() - start_time > time_limit:
+            return 9.999
+    return time() - start_time
+
+
+implementations = [
+    ("Elia Robyn Lake", rsset),
+    ("Raymond Hettinger Set", rhset),
+    ("Raymond Hettinger Dict", dbset),
+    ("Raymond Hettinger Dict without arrays", waset),
+    ("Native ordered Raymond Hettinger's dicts", odset),
+    ("RH dicts in wrapper made by Xavier", xvset),
+    ("RH dicts in wrapper made by me", hxset),
+    ("Just list[T] and dict[T, int] together", jtset),
+    ("Unordered set", set),
+]
+for implementation_name, Set in implementations:
+    obj = Set()
+    length = 1_000_000
+    infinity = 9.999
+    times = {}
+    print("\n" + f" {implementation_name} ".center(90, "-"))
+    print(" ", end=" ")
+    times["update"] = time_it(range(1), lambda _: obj.update(range(length)))
+    print(end=".", flush=True)
+    times["iter"] = time_it(obj, lambda _: None, 1)
+    print(end=".", flush=True)
+    times["discard"] = time_it(range(length), lambda x: obj.discard(length - 1 - x))
+    print(end=".", flush=True)
+    times["add"] = time_it(range(length), lambda x: obj.add(length - 1 - x))
+    print(end=".", flush=True)
+    times["contains"] = time_it(range(length), lambda x: (length - 1 - x) in obj)
+    print(end=".", flush=True)
+    times["remove"] = time_it(range(length), lambda x: obj.remove(length - 1 - x))
+    print("\r " + " ".join(f" {method}: {dt:.3f}" for method, dt in times.items()))
