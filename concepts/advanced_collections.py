@@ -5,7 +5,7 @@ from typing import Any, Iterable, Iterator, TypeVar, overload
 T = TypeVar("T")
 
 
-class OrderedSet(MutableSet[T]):
+class OrderedSet(Set[T]):
     __slots__ = ("elements",)
 
     def __init__(self, iterable: Iterable[T] = ()):
@@ -23,6 +23,8 @@ class OrderedSet(MutableSet[T]):
     def __repr__(self) -> str:
         return f"OrderedSet({list(self.elements)})"
 
+
+class MutableOrderedSet(OrderedSet[T], MutableSet[T]):
     def add(self, element: T) -> None:
         self.elements[element] = None
 
@@ -37,24 +39,7 @@ class OrderedSet(MutableSet[T]):
         del self.elements[element]
 
 
-class FrozenOrderedSet(Set[T], Hashable):
-    __slots__ = ("elements",)
-
-    def __init__(self, iterable: Iterable[T] = ()):
-        self.elements: dict[T, None] = dict.fromkeys(iterable)
-
-    def __contains__(self, element: Any) -> bool:
-        return element in self.elements
-
-    def __iter__(self) -> Iterator[T]:
-        return iter(self.elements)
-
-    def __len__(self) -> int:
-        return len(self.elements)
-
-    def __repr__(self) -> str:
-        return f"OrderedSet({list(self.elements)})"
-
+class FrozenOrderedSet(OrderedSet[T], Hashable):
     def __hash__(self) -> int:
         return hash(tuple(self.elements))
 
