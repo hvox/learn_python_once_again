@@ -39,6 +39,32 @@ class MutableOrderedSet(OrderedSet[T], MutableSet[T]):
         del self.elements[element]
 
 
+class GrowableOrderedSet(OrderedSet[T]):
+    __slots__ = ("values", "indexes")
+
+    def __init__(self, iterable: Iterable[T] = ()):
+        elements = dict.fromkeys(iterable)
+        self.values: list[T] = list(elements)
+        self.indexes: dict[T, int] = {v: i for i, v in enumerate(elements)}
+
+    def add(self, element: T) -> None:
+        if element not in self.indexes:
+            self.values.append(element)
+            self.indexes[element] = len(self.indexes)
+
+    def __contains__(self, element: Any) -> bool:
+        return element in self.indexes
+
+    def __iter__(self) -> Iterator[T]:
+        return iter(self.values)
+
+    def __len__(self) -> int:
+        return len(self.values)
+
+    def __repr__(self) -> str:
+        return f"OrderedSet({self.values})"
+
+
 class FrozenOrderedSet(OrderedSet[T], Hashable):
     def __hash__(self) -> int:
         return hash(tuple(self.elements))
