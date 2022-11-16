@@ -1,6 +1,6 @@
 # bins - idea for package name if I ever put this thing on pypy
 from collections.abc import Hashable, MutableSequence, MutableSet, Sequence, Set
-from typing import Any, Iterable, Iterator, TypeVar, overload
+from typing import Any, Iterable, Iterator, Self, TypeVar, overload
 
 T = TypeVar("T")
 
@@ -44,7 +44,7 @@ class FrozenOrderedSet(OrderedSet[T], Hashable):
         return hash(tuple(self.elements))
 
 
-class IndexedSet(MutableSequence[T], MutableSet[T]):
+class IndexedSet(Sequence[T], Set[T]):
     __slots__ = ("indexes", "values")
 
     def __init__(self, iterable: Iterable[T] = ()):
@@ -64,6 +64,24 @@ class IndexedSet(MutableSequence[T], MutableSet[T]):
     def __repr__(self) -> str:
         return f"IndexedSet({self.values})"
 
+    @overload
+    def __getitem__(self, i: int) -> T:
+        ...
+
+    @overload
+    def __getitem__(self, i: slice) -> Self:
+        ...
+
+    def __getitem__(self, i: int | slice) -> T | Self:
+        if isinstance(i, int):
+            return self.values[i]
+        start = i.start if i.start is not None else 0
+        stop = i.stop if i.stop is not None else len(self.values) - 1
+        step = i.step if i.step is not None else 1
+        return IndexedSet(self.values[i] for i in range(start, stop, step))
+
+
+class MutableIndexedSet(IndexedSet[T], MutableSequence[T], MutableSet[T]):
     def __delitem__(self, i: int | slice) -> None:
         if isinstance(i, int):
             return self.remove(self.values[i])
@@ -72,22 +90,6 @@ class IndexedSet(MutableSequence[T], MutableSet[T]):
         step = i.step if i.step is not None else 1
         for i in range(start, stop, step) if step < 0 else reversed(range(start, stop, step)):
             self.remove(self.values[i])
-
-    @overload
-    def __getitem__(self, i: int) -> T:
-        ...
-
-    @overload
-    def __getitem__(self, i: slice) -> MutableSequence[T]:
-        ...
-
-    def __getitem__(self, i: int | slice) -> T | MutableSequence[T]:
-        if isinstance(i, int):
-            return self.values[i]
-        start = i.start if i.start is not None else 0
-        stop = i.stop if i.stop is not None else len(self.values) - 1
-        step = i.step if i.step is not None else 1
-        return IndexedSet(self.values[i] for i in range(start, stop, step))
 
     @overload
     def __setitem__(self, i: int, value: T) -> None:
@@ -168,41 +170,6 @@ class IndexedSet(MutableSequence[T], MutableSet[T]):
             self.indexes[self.values[i]] = i
 
 
-class FrozenIndexedSet(Sequence[T], Set[T], Hashable):
-    __slots__ = ("indexes", "values")
-
-    def __init__(self, iterable: Iterable[T] = ()):
-        elements = tuple(dict.fromkeys(iterable))
-        self.values: tuple[T, ...] = elements
-        self.indexes: dict[T, int] = {v: i for i, v in enumerate(elements)}
-
-    def __contains__(self, element: Any) -> bool:
-        return element in self.indexes
-
-    def __iter__(self) -> Iterator[T]:
-        return iter(self.values)
-
-    def __len__(self) -> int:
-        return len(self.values)
-
-    def __repr__(self) -> str:
-        return f"IndexedSet({self.values})"
-
-    @overload
-    def __getitem__(self, i: int) -> T:
-        ...
-
-    @overload
-    def __getitem__(self, i: slice) -> MutableSequence[T]:
-        ...
-
-    def __getitem__(self, i: int | slice) -> T | MutableSequence[T]:
-        if isinstance(i, int):
-            return self.values[i]
-        start = i.start if i.start is not None else 0
-        stop = i.stop if i.stop is not None else len(self.values) - 1
-        step = i.step if i.step is not None else 1
-        return IndexedSet(self.values[i] for i in range(start, stop, step))
-
+class FrozenIndexedSet(IndexedSet[T], Hashable):
     def __hash__(self) -> int:
-        return hash(self.values)
+        return hash(tuple(self.values))
