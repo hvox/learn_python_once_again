@@ -81,6 +81,11 @@ class IndexedSet(Sequence[T], Set[T]):
         return IndexedSet(self.values[i] for i in range(start, stop, step))
 
 
+class FrozenIndexedSet(IndexedSet[T], Hashable):
+    def __hash__(self) -> int:
+        return hash(tuple(self.values))
+
+
 class MutableIndexedSet(IndexedSet[T], MutableSequence[T], MutableSet[T]):
     def __delitem__(self, i: int | slice) -> None:
         if isinstance(i, int):
@@ -169,7 +174,8 @@ class MutableIndexedSet(IndexedSet[T], MutableSequence[T], MutableSet[T]):
             self.values[i] = self.values.pop()
             self.indexes[self.values[i]] = i
 
-
-class FrozenIndexedSet(IndexedSet[T], Hashable):
-    def __hash__(self) -> int:
-        return hash(tuple(self.values))
+    def freeze(self) -> FrozenIndexedSet[T]:
+        frozen_set: FrozenIndexedSet[T] = FrozenIndexedSet()
+        frozen_set.values, frozen_set.indexes = self.values, self.indexes
+        self.values, self.indexes = [], {}
+        return frozen_set
