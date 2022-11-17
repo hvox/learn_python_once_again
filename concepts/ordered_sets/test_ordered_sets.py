@@ -10,6 +10,7 @@ from native_raymond_hettinger_dict_based_sets_by_xavier import OrderedSet as xvs
 from raymond_hettinger_dict_based_sets import OrderedSet as dbset
 from raymond_hettinger_dict_based_sets_without_arrays import OrderedSet as waset
 from raymond_hettinger_sets import OrderedSet as rhset
+from sparse_list_and_dict import OrderedSet as sdset
 
 
 def time_it(iterable, f, time_limit=2):
@@ -30,6 +31,7 @@ implementations = [
     ("RH dicts in wrapper made by Xavier", xvset),
     ("RH dicts in wrapper made by me", hxset),
     ("Just list[T] and dict[T, int] together", jtset),
+    ("Sparse IndexedSet", sdset),
     ("My IndexedSet", iset),
     ("Unordered set", set),
 ]
