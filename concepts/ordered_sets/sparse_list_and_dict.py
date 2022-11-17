@@ -18,7 +18,7 @@ class OrderedSet(MutableSet[T]):
         return element in self.lookup
 
     def __iter__(self) -> Iterator[T]:
-        return (self.elements[i] for i in self.lookup.values())
+        return iter(self.lookup)
 
     def __len__(self) -> int:
         return len(self.lookup)
@@ -32,8 +32,8 @@ class OrderedSet(MutableSet[T]):
             self.lookup[element] = len(self.lookup)
 
     def update(self, elements: Iterable[T]) -> None:
-        for x in elements:
-            self.add(x)
+        self.elements.extend(elements)
+        self.lookup |= {elem: i for i, elem in enumerate(elements, len(self.lookup))}
 
     def discard(self, element: T) -> None:
         if element in self.lookup:
