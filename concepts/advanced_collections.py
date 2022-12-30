@@ -6,6 +6,234 @@ from random import randint
 T = TypeVar("T")
 
 
+class SequentialSet(Sequence[T], Set[T]):
+    __slots__ = ("indexes", "values")
+
+    def __init__(self, iterable: Iterable[T] = ()):
+        self.values: list[T] = list(dict.fromkeys(iterable))
+        self.indexes: dict[T, int] = {v: i for i, v in enumerate(self.values)}
+
+    def __contains__(self, element: Any) -> bool:
+        return element in self.indexes
+
+    def __iter__(self) -> Iterator[T]:
+        return iter(self.values)
+
+    def __len__(self) -> int:
+        return len(self.values)
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__qualname__}({self.values})"
+
+    @overload
+    def __getitem__(self, i: int) -> T:
+        ...
+
+    @overload
+    def __getitem__(self, i: slice) -> Self:
+        ...
+
+    def __getitem__(self, i: int | slice) -> T | Self:
+        if isinstance(i, int):
+            return self.values[i]
+        return self.__class__(self.values[i])
+
+    def index(self, value: T, start: int = 0, stop: int | None = None) -> int:
+        real_stop = stop if stop is not None else 2**30
+        i = self.indexes.get(value, -1)
+        return i if i != -1 and start <= i < real_stop else -1
+
+    def freeze(self) -> "HashableSequentialSet[T]":
+        if isinstance(self, HashableSequentialSet):
+            return self
+        return HashableSequentialSet(self.values)
+
+
+class HashableSequentialSet(SequentialSet[T], Hashable):
+    __slots__ = ("indexes", "values", "hash")
+
+    def __init__(self, iterable: Iterable[T] = ()):
+        self.values: list[T] = list(dict.fromkeys(iterable))
+        self.indexes: dict[T, int] = {v: i for i, v in enumerate(self.values)}
+        self.hash = sum(map(hash, self.values))
+
+    def __hash__(self):
+        return self.hash
+
+
+class MutableSequentialSet(SequentialSet[T], MutableSequence[T], MutableSet[T]):
+    def __delitem__(self, i: int | slice) -> None:
+        if isinstance(i, int):
+            value = self.values.pop(i)
+            del self.indexes[value]
+            for i, value in enumerate(self.values[i:], i):
+                self.indexes[value] = i
+        raise TypeError("Why would you want to delete slice of a set?")
+
+    @overload
+    def __setitem__(self, i: int, value: T) -> None:
+        ...
+
+    @overload
+    def __setitem__(self, i: slice, iterable: Iterable[T]) -> None:
+        ...
+
+    def __setitem__(self, i: int | slice, new_value: Any) -> None:
+        if not isinstance(i, int):
+            raise TypeError("Why would you want to set slice of a set?")
+        old_value = self.values[i]
+        if new_value == old_value:
+            return
+        if new_value in self.indexes:
+            raise ValueError(
+                f"{new_value!r} is already in the set at a different index"
+            )
+        del self.indexes[old_value]
+        self.values[i] = new_value
+        self.indexes[new_value] = i
+
+    def insert(self, i: int, element: T) -> None:
+        if element in self.indexes:
+            raise ValueError(f"{element!r} is already in the set")
+        self.values.insert(i, element)
+        for i, value in enumerate(self.values[i:], i):
+            self.indexes[value] = i
+
+    def add(self, element: T) -> None:
+        if element not in self.indexes:
+            self.indexes[element] = len(self.values)
+            self.values.append(element)
+
+    def push(self, element: T) -> int:
+        i = self.indexes.get(element, len(self.indexes))
+        if i == len(self.values):
+            self.indexes[element] = i
+            self.values.append(element)
+        return i
+
+    def update(self, elements: Iterable[T]) -> None:
+        for x in elements:
+            self.add(x)
+
+    def discard(self, element: T) -> None:
+        if element in self.indexes:
+            self.remove(element)
+
+    def remove(self, element: T) -> None:
+        i = self.indexes.pop(element)
+        filler = self.values.pop()
+        if i < len(self.indexes):
+            self.values[i] = filler
+            self.indexes[filler] = i
+
+
+class MutableHashableOrderedSetWithDuringIterationMutationAllowed(
+    MutableSequence[T], MutableSet[T]
+):
+    __slots__ = ("indexes", "values")
+
+    def __init__(self, iterable: Iterable[T] = ()):
+        self.values: list[T] = list(dict.fromkeys(iterable))
+        self.indexes: dict[T, int] = {v: i for i, v in enumerate(self.values)}
+
+    def __contains__(self, element: Any) -> bool:
+        return element in self.indexes
+
+    def __iter__(self) -> Iterator[T]:
+        return iter(self.values)
+
+    def __len__(self) -> int:
+        return len(self.values)
+
+    def __repr__(self) -> str:
+        return f"{self.__class__.__qualname__}({self.values})"
+
+    @overload
+    def __getitem__(self, i: int) -> T:
+        ...
+
+    @overload
+    def __getitem__(self, i: slice) -> Self:
+        ...
+
+    def __getitem__(self, i: int | slice) -> T | Self:
+        if isinstance(i, int):
+            return self.values[i]
+        return self.__class__(self.values[i])
+
+    def index(self, value: T, start: int = 0, stop: int | None = None) -> int:
+        real_stop = stop if stop is not None else 2**30
+        i = self.indexes.get(value, -1)
+        return i if i != -1 and start <= i < real_stop else -1
+
+    def __delitem__(self, i: int | slice) -> None:
+        if isinstance(i, int):
+            value = self.values.pop(i)
+            del self.indexes[value]
+            for i, value in enumerate(self.values[i:], i):
+                self.indexes[value] = i
+        raise TypeError("Why would you want to delete slice of a set?")
+
+    @overload
+    def __setitem__(self, i: int, value: T) -> None:
+        ...
+
+    @overload
+    def __setitem__(self, i: slice, iterable: Iterable[T]) -> None:
+        ...
+
+    def __setitem__(self, i: int | slice, new_value: Any) -> None:
+        if not isinstance(i, int):
+            raise TypeError("Why would you want to set slice of a set?")
+        old_value = self.values[i]
+        if new_value == old_value:
+            return
+        if new_value in self.indexes:
+            raise ValueError(
+                f"{new_value!r} is already in the set at a different index"
+            )
+        del self.indexes[old_value]
+        self.values[i] = new_value
+        self.indexes[new_value] = i
+
+    def insert(self, i: int, element: T) -> None:
+        if element in self.indexes:
+            raise ValueError(f"{element!r} is already in the set")
+        self.values.insert(i, element)
+        for i, value in enumerate(self.values[i:], i):
+            self.indexes[value] = i
+
+    def add(self, element: T) -> None:
+        if element not in self.indexes:
+            self.indexes[element] = len(self.values)
+            self.values.append(element)
+
+    def push(self, element: T) -> int:
+        i = self.indexes.get(element, len(self.indexes))
+        if i == len(self.values):
+            self.indexes[element] = i
+            self.values.append(element)
+        return i
+
+    def update(self, elements: Iterable[T]) -> None:
+        for x in elements:
+            self.add(x)
+
+    def discard(self, element: T) -> None:
+        if element in self.indexes:
+            self.remove(element)
+
+    def remove(self, element: T) -> None:
+        i = self.indexes.pop(element)
+        filler = self.values.pop()
+        if i < len(self.indexes):
+            self.values[i] = filler
+            self.indexes[filler] = i
+
+    def __hash__(self) -> int:
+        return sum(map(hash, self.values))
+
+
 class MutablyIterableIndexedSet(MutableSequence[T], MutableSet[T]):
     __slots__ = ("indexes", "values")
 
