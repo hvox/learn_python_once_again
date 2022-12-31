@@ -25,6 +25,9 @@ class SequentialSet(Sequence[T], Set[T]):
     def __repr__(self) -> str:
         return f"{self.__class__.__qualname__}({self.values})"
 
+    def __str__(self) -> str:
+        return "{" + ", ".join(map(repr, self.values)) + "}"
+
     @overload
     def __getitem__(self, i: int) -> T:
         ...
@@ -120,6 +123,98 @@ class MutableSequentialSet(SequentialSet[T], MutableSequence[T], MutableSet[T]):
             self.remove(element)
 
     def remove(self, element: T) -> None:
+        i = self.indexes.pop(element)
+        filler = self.values.pop()
+        if i < len(self.indexes):
+            self.values[i] = filler
+            self.indexes[filler] = i
+
+
+class MutableOrHashableSequentialSet(
+    SequentialSet[T], MutableSequence[T], MutableSet[T], Hashable
+):
+    __slots__ = ("indexes", "values", "hash")
+
+    def __init__(self, iterable: Iterable[T] = ()):
+        self.values: list[T] = list(dict.fromkeys(iterable))
+        self.indexes: dict[T, int] = {v: i for i, v in enumerate(self.values)}
+        self.hash = None
+
+    def __hash__(self):
+        if self.hash is None:
+            self.hash = sum(map(hash, self.values))
+        return self.hash
+
+    def __delitem__(self, i: int | slice) -> None:
+        if self.hash is not None:
+            raise ValueError("It is prohibited to modify hashable set")
+        if not isinstance(i, int):
+            raise TypeError("Why would you want to delete slice of a set?")
+        value = self.values.pop(i)
+        del self.indexes[value]
+        for i, value in enumerate(self.values[i:], i):
+            self.indexes[value] = i
+
+    @overload
+    def __setitem__(self, i: int, value: T) -> None:
+        ...
+
+    @overload
+    def __setitem__(self, i: slice, iterable: Iterable[T]) -> None:
+        ...
+
+    def __setitem__(self, i: int | slice, new_value: Any) -> None:
+        if not isinstance(i, int):
+            raise TypeError("Why would you want to set slice of a set?")
+        old_value = self.values[i]
+        if new_value == old_value:
+            return
+        if new_value in self.indexes:
+            raise ValueError(
+                f"{new_value!r} is already in the set at a different index"
+            )
+        if self.hash is not None:
+            raise ValueError("It is prohibited to modify hashable set")
+        del self.indexes[old_value]
+        self.values[i] = new_value
+        self.indexes[new_value] = i
+
+    def insert(self, i: int, element: T) -> None:
+        if self.hash is not None:
+            raise ValueError("It is prohibited to modify hashable set")
+        if element in self.indexes:
+            raise ValueError(f"{element!r} is already in the set")
+        self.values.insert(i, element)
+        for i, value in enumerate(self.values[i:], i):
+            self.indexes[value] = i
+
+    def add(self, element: T) -> None:
+        if element not in self.indexes:
+            if self.hash is not None:
+                raise ValueError("It is prohibited to modify hashable set")
+            self.indexes[element] = len(self.values)
+            self.values.append(element)
+
+    def push(self, element: T) -> int:
+        i = self.indexes.get(element, len(self.indexes))
+        if i == len(self.values):
+            if self.hash is not None:
+                raise ValueError("It is prohibited to modify hashable set")
+            self.indexes[element] = i
+            self.values.append(element)
+        return i
+
+    def update(self, elements: Iterable[T]) -> None:
+        for x in elements:
+            self.add(x)
+
+    def discard(self, element: T) -> None:
+        if element in self.indexes:
+            self.remove(element)
+
+    def remove(self, element: T) -> None:
+        if self.hash is not None:
+            raise ValueError("It is prohibited to modify hashable set")
         i = self.indexes.pop(element)
         filler = self.values.pop()
         if i < len(self.indexes):
@@ -775,7 +870,3 @@ class StorageSet(MutableSequence[T], MutableSet[T]):
         frozen_set.values, frozen_set.indexes = self.values, self.indexes
         self.values, self.indexes = [], {}
         return frozen_set
-
-
-st: StorageSet[int] = StorageSet(range(1, 11))
-print("", st, hex(st.index(6)))
