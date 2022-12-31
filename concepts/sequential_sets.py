@@ -231,59 +231,29 @@ class DynSet(MutableSequentialSet[T], HashableSequentialSet[T]):
     def __delitem__(self, index: int | slice) -> None:
         if self.hash is not None:
             raise ValueError("It is prohibited to modify hashable set")
-        if not isinstance(index, int):
-            raise TypeError("Why would you want to delete slice of a set?")
-        value = self.values.pop(index)
-        del self.indexes[value]
-        for i, value in enumerate(self.values[index:], index):
-            self.indexes[value] = i
+        super().__delitem__(index)
 
     def __setitem__(self, i: int | slice, new_value: Any) -> None:
         if not isinstance(i, int):
             raise TypeError("Why would you want to set slice of a set?")
-        old_value = self.values[i]
-        if new_value == old_value:
-            return
-        if new_value in self.indexes:
-            raise ValueError(
-                f"{new_value!r} is already in the set at a different index"
-            )
-        if self.hash is not None:
-            raise ValueError("It is prohibited to modify hashable set")
-        del self.indexes[old_value]
-        self.values[i] = new_value
-        self.indexes[new_value] = i
+        super().__setitem__(i, new_value)
 
     def insert(self, index: int, value: T) -> None:
         if self.hash is not None:
             raise ValueError("It is prohibited to modify hashable set")
-        if value in self.indexes:
-            raise ValueError(f"{value!r} is already in the set")
-        self.values.insert(index, value)
-        for i, element in enumerate(self.values[index:], index):
-            self.indexes[element] = i
+        super().insert(index, value)
 
     def add(self, value: T) -> None:
-        if value not in self.indexes:
-            if self.hash is not None:
-                raise ValueError("It is prohibited to modify hashable set")
-            self.indexes[value] = len(self.values)
-            self.values.append(value)
+        if self.hash is not None:
+            raise ValueError("It is prohibited to modify hashable set")
+        super().add(value)
 
     def push(self, element: T) -> int:
-        i = self.indexes.get(element, len(self.indexes))
-        if i == len(self.values):
-            if self.hash is not None:
-                raise ValueError("It is prohibited to modify hashable set")
-            self.indexes[element] = i
-            self.values.append(element)
-        return i
+        if self.hash is not None:
+            raise ValueError("It is prohibited to modify hashable set")
+        return super().push(element)
 
     def remove(self, value: T) -> None:
         if self.hash is not None:
             raise ValueError("It is prohibited to modify hashable set")
-        i = self.indexes.pop(value)
-        filler = self.values.pop()
-        if i < len(self.indexes):
-            self.values[i] = filler
-            self.indexes[filler] = i
+        super().remove(value)
