@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+r"""
+ZMQ RFC Z85 is a file format for representing binary data as printable tex.
+
+Usage:
+    z85 encode <input-file> <output-file>
+    z85 decode <input-file> <output-file>
+    z85 -h | --help
+
+Commands:
+    encode         Encode content of input file into z85 representation.
+    decode         Decode z85 code and save result into output file.
+
+Options:
+    -h --help      Print this help message and exit.
+"""
+from pathlib import Path
+
+CHARACTERS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.-:+=^!/*?&<>()[]{}@%$#"
+
+
+def encode(data: bytes) -> str:
+    result = []
+    for chunk in (data[i:i + 4] for i in range(0, len(data), 4)):
+        number = sum(x * 256 ** i for i, x in enumerate(reversed(chunk)))
+        chars = [CHARACTERS[number // 85**i % 85] for i in reversed(range(5))]
+        result.append("".join(chars[-((len(chunk) * 5 + 3) // 4):]))
+    return "".join(result)
+
+
+def decode(z85: str) -> bytes:
+    result = []
+    for chunk in (z85[i:i + 5] for i in range(0, len(z85), 5)):
+        number = sum(CHARACTERS.find(x) * 85 ** i for i, x in enumerate(reversed(chunk)))
+        result.append(number.to_bytes(4, "big")[-((len(chunk) * 4 + 1) // 5):])
+    return b"".join(result)
+
+
+if __name__ == "__main__":
+    args = __import__("docopt").docopt(__doc__)
+    inpt, output = Path(args["<input-file>"]), Path(args["<output-file>"])
+    if args["encode"]:
+        output.write_text(encode(inpt.read_bytes()))
+    else:
+        output.write_bytes(decode(inpt.read_text()))
