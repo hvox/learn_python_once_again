@@ -19,19 +19,24 @@ from pathlib import Path
 CHARACTERS = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ.-:+=^!/*?&<>()[]{}@%$#"
 
 
-def encode(data: bytes) -> str:
+def encode(data: bytes, prettify: bool = False) -> str:
     result = []
     for chunk in (data[i:i + 4] for i in range(0, len(data), 4)):
         number = sum(x * 256 ** i for i, x in enumerate(chunk))
         chars = [CHARACTERS[number // 85**i % 85] for i in range(5)]
         result.append("".join(chars[:(len(chunk) * 5 + 3) // 4]))
-    return "".join(result)
+    code = "".join(result)
+    if prettify:
+        lines = (len(code) + 119) // 120
+        line_length = (len(code) + lines - 1) // lines
+        code = "\n".join([code[i:i + line_length] for i in range(0, len(code), line_length)])
+    return code
 
 
 def decode(z85: str) -> bytes:
-    result = []
+    result, z85 = [], z85.translate({ord("\n"): "", ord(" "): "", ord("\t"): ""})
     for chunk in (z85[i:i + 5] for i in range(0, len(z85), 5)):
-        number = sum(CHARACTERS.find(x) * 85 ** i for i, x in enumerate(chunk))
+        number = sum(CHARACTERS.index(x) * 85 ** i for i, x in enumerate(chunk))
         result.append(number.to_bytes(4, "little")[:(len(chunk) * 4 + 1) // 5])
     return b"".join(result)
 
@@ -40,6 +45,6 @@ if __name__ == "__main__":
     args = __import__("docopt").docopt(__doc__)
     inpt, output = Path(args["<input-file>"]), Path(args["<output-file>"])
     if args["encode"]:
-        output.write_text(encode(inpt.read_bytes()))
+        output.write_text(encode(inpt.read_bytes(), prettify=True))
     else:
         output.write_bytes(decode(inpt.read_text()))
