@@ -1,5 +1,5 @@
 from fractions import Fraction
-from itertools import zip_longest
+from itertools import zip_longest, product
 from math import gcd
 from os import get_terminal_size
 
@@ -112,6 +112,62 @@ def khamkou_left_subtree_v5(n: int):
     yield from list(khamkou_tree_v5(n))[: 2 ** (n - 1) + 1]
 
 
+def khamkou_230218_for_left_subtree(binary_code: str) -> Fraction:
+    def lsb(x: int) -> int:
+        return x & -x
+    if not binary_code:
+        return Fraction(1, 2)
+    alpha, beacon, direction = 2, [1, 2], binary_code[0]
+    star = [1, 1] if direction == "1" else [0, 1]
+    for code in binary_code[1:]:
+        if alpha % 2 == 1:
+            beacon, star = (
+                [x + alpha * y for x, y in zip(beacon, star)],
+                [x + (alpha + (-1)**(code != direction)) * y for x, y in zip(beacon, star)]
+            )
+            alpha, direction = 2, code
+        elif "1" not in bin(alpha + 2)[3:]:
+            if code == direction:
+                alpha += 2 ** len(bin(alpha + 2)[3:])
+            else:
+                alpha = (alpha + 2) * 3 // 4 - 2
+        else:
+            if code == direction:
+                alpha += lsb(alpha + 2) // 2
+            else:
+                alpha -= lsb(alpha + 2) // 2 if alpha != 2 else 1
+    return Fraction(*[x + alpha * y for x, y in zip(beacon, star)])
+
+
+def khamkou_230218(binary_code: str) -> Fraction:
+    def inv(code: str) -> str:
+        return "".join("1" if char == "0" else "0" for char in code)
+    assert all(char in "01" for char in binary_code)
+    if len(binary_code) < 2:
+        return Fraction({"0": -1, "": 0, "1": 1}[binary_code])
+    r = binary_code
+    sign = +1 if binary_code[0] == "1" else -1
+    binary_code = binary_code[1:] if binary_code[0] == "1" else inv(binary_code[1:])
+    inversed = binary_code[0] == "1"
+    binary_code = inv(binary_code[1:]) if inversed else binary_code[1:]
+    x = khamkou_230218_for_left_subtree(binary_code)
+    return sign * (1 / x if inversed else x)
+
+
+def khamkou_230218_left_subtree(n: int):
+    def get_codes(n: int):
+        if n <= 0:
+            return
+        yield from ("0" + code for code in (get_codes(n - 1)))
+        yield ""
+        yield from ("1" + code for code in (get_codes(n - 1)))
+
+    yield Fraction(0)
+    for code in get_codes(n - 1):
+        yield khamkou_230218("10" + code)
+    yield Fraction(1)
+
+
 def print_table(rows: list[str], sep=" "):
     line_width = get_terminal_size().columns
     lengths = [max(len(x) for x in column if x) for column in zip_longest(*rows)]
@@ -129,6 +185,7 @@ trees = [
     ("Khamkou(V3)", khamkou_left_subtree_v3),
     ("Khamkou(V4)", khamkou_left_subtree_v4),  # my favorite
     ("Khamkou(V5)", khamkou_left_subtree_v5),
+    ("[23-02-18]", khamkou_230218_left_subtree),
 ]
 for n in range(1, 11):
     print(f"\n  n = {n}")
