@@ -351,7 +351,7 @@ for n in range(1, 11):
     if fails:
         print("Failed Farey test:", ", ".join(fails))
     if set_fails:
-        print("Failed element uniqueness test:", ", ".join(fails))
+        print("Failed element uniqueness test:", ", ".join(set_fails))
     if order_fails:
-        print("Failed order test:", ", ".join(fails))
+        print("Failed order test:", ", ".join(order_fails))
     print_table(table, "  ")
