@@ -197,13 +197,6 @@ def Vecs(*elements):
 
 
 def khamkou_230219(binary_code: str) -> Fraction:
-    def inv(code: str) -> str:
-        return "".join("1" if char == "0" else "0" for char in code)
-
-    def offset(alpha, beta, delta):
-        assert alpha != beta
-        return [alpha + delta, beta] if alpha > beta else [alpha, beta + delta]
-
     assert all(char in "01" for char in binary_code)
     if len(binary_code) < 2:
         return Fraction({"0": -1, "": 0, "1": 1}[binary_code])
@@ -240,6 +233,75 @@ def khamkou_230219_left_subtree(n: int):
     yield Fraction(1)
 
 
+def khamkou_230220(binary_code: str) -> Fraction:
+    def lsb(x: int) -> int:
+        return x & -x
+    assert all(char in "01" for char in binary_code)
+    if len(binary_code) < 2:
+        return Fraction({"0": -1, "": 0, "1": 1}[binary_code])
+    alpha, beta, i = 1, 1, int(binary_code[:2], 2)
+    left, right = Vecs([-1, 0], [-1, 1], [0, 1], [+1, 1], [+1, 0])[i:i+2]
+    # print("whole code:", binary_code[:2], binary_code[2:])
+    for char in binary_code[2:]:
+        # print("\tcode:", char)
+        if (alpha + beta) % 2 == 1:
+            alpha, beta, center, left, right = (
+                1, 1, alpha * left + beta * right,
+                (alpha + (alpha > beta)) * left + (beta - (beta > alpha)) * right,
+                (alpha - (alpha > beta)) * left + (beta + (beta > alpha)) * right
+            )
+            left, right = ((left, center) if char == "0" else (center, right))
+        elif "1" not in bin(alpha + beta)[3:]:
+            log = len(bin(alpha + beta)) - 3
+            if "1" not in bin(log)[3:]:
+                if char == "1" and alpha == 1:
+                    beta += 2**(2 * log) - (alpha + beta)
+                elif char == "0" and beta == 1:
+                    alpha += 2**(2 * log) - (alpha + beta)
+                elif char == "0" and alpha == 1:
+                    beta -= (alpha + beta) - 2**(log * 3 // 4) if log > 2 else (alpha + beta) // 4
+                    # if log % 4 == 0:
+                    #     beta += 2**(log * 3 // 4) - (alpha + beta)
+                    # else:
+                    #     beta -= (alpha + beta) // 4
+                elif char == "1" and beta == 1:
+                    alpha -= (alpha + beta) - 2**(log * 3 // 4) if log > 2 else (alpha + beta) // 4
+                    # if log % 4 == 0:
+                    #     alpha += 2**(log * 3 // 4) - (alpha + beta)
+                    # else:
+                    #     alpha -= (alpha + beta) // 4
+            elif log % 2 == 1:
+                if char == "1" and alpha == 1:
+                    beta += (alpha + beta) // 2
+                elif char == "0" and beta == 1:
+                    alpha += (alpha + beta) // 2
+                elif char == "0" and alpha == 1:
+                    beta -= (alpha + beta) // 4
+                elif char == "1" and beta == 1:
+                    alpha -= (alpha + beta) // 4
+            elif char == "1" and alpha == 1:
+                beta += 2**(log + lsb(log) // 2) - (alpha + beta)
+            elif char == "0" and beta == 1:
+                alpha += 2**(log + lsb(log) // 2) - (alpha + beta)
+            elif char == "0" and alpha == 1:
+                beta += 2**(log - lsb(log) // 2) - (alpha + beta)
+            elif char == "1" and beta == 1:
+                alpha += 2**(log - lsb(log) // 2) - (alpha + beta)
+        elif alpha > beta:
+            alpha -= (-1)**(char == "0") * ((alpha + beta) & -(alpha + beta)) // 2
+        else:
+            beta -= (-1)**(char == "1") * ((alpha + beta) & -(alpha + beta)) // 2
+        # print("\t", list(alpha * left + beta * right), "=", alpha, list(left), "+", beta, list(right))
+    return Fraction(*(alpha * left + beta * right))
+
+
+def khamkou_230220_left_subtree(n: int):
+    yield Fraction(0)
+    for code in get_binary_codes(n - 1):
+        yield khamkou_230220("10" + code)
+    yield Fraction(1)
+
+
 def catch(f, default_value=Exception):
     try:
         return f()
@@ -264,10 +326,11 @@ trees = [
     ("Khamkou(V1)", khamkou_left_subtree_v1),
     ("Khamkou(V2)", khamkou_left_subtree_v2),
     ("Khamkou(V3)", khamkou_left_subtree_v3),
-    ("Khamkou(V4)", khamkou_left_subtree_v4),  # my favorite
+    ("Khamkou(V4)", khamkou_left_subtree_v4),
     ("Khamkou(V5)", khamkou_left_subtree_v5),
     ("[23-02-18]", khamkou_230218_left_subtree),
     ("[23-02-19]", khamkou_230219_left_subtree),
+    ("[23-02-20]", khamkou_230220_left_subtree),
 ]
 for n in range(1, 11):
     print(f"\n  n = {n}")
@@ -278,7 +341,7 @@ for n in range(1, 11):
     for tree_name, f in trees:
         tree = list(f(n))
         # table.append([tree_name + ":"] + [str(1/x) for x in reversed(tree) if x != 0])
-        table.append([tree_name + ":"] + list(map(str, tree)))
+        table.append([tree_name + ":"] + [s if len(s) <= 6 else "..." for s in map(str, tree)])
         if not set(farey_sequence(n)) <= set(tree):
             fails.append(tree_name)
         if len(set(tree)) != len(tree):
