@@ -1,7 +1,9 @@
+from __future__ import annotations
 from fractions import Fraction
 from itertools import zip_longest, product
 from math import gcd
 from os import get_terminal_size
+from typing import NamedTuple
 
 
 def farey_sequence(n: int):
@@ -168,8 +170,87 @@ def khamkou_230218_left_subtree(n: int):
     yield Fraction(1)
 
 
+def get_binary_codes(n: int):
+    if n <= 0:
+        return
+    yield from ("0" + code for code in (get_binary_codes(n - 1)))
+    yield ""
+    yield from ("1" + code for code in (get_binary_codes(n - 1)))
+
+
+class Vec2(NamedTuple):
+    x: int
+    y: int
+
+    def __add__(self, other: Vec2) -> Vec2:
+        return Vec2(self.x + other.x, self.y + other.y)
+
+    def __mul__(self, scale: int) -> Vec2:
+        return Vec2(self.x * scale, self.y * scale)
+
+    def __rmul__(self, scale: int) -> Vec2:
+        return Vec2(self.x * scale, self.y * scale)
+
+
+def Vecs(*elements):
+    return [Vec2(x, y) for x, y in elements]
+
+
+def khamkou_230219(binary_code: str) -> Fraction:
+    def inv(code: str) -> str:
+        return "".join("1" if char == "0" else "0" for char in code)
+
+    def offset(alpha, beta, delta):
+        assert alpha != beta
+        return [alpha + delta, beta] if alpha > beta else [alpha, beta + delta]
+
+    assert all(char in "01" for char in binary_code)
+    if len(binary_code) < 2:
+        return Fraction({"0": -1, "": 0, "1": 1}[binary_code])
+    alpha, beta, i = 1, 1, int(binary_code[:2], 2)
+    left, right = Vecs([-1, 0], [-1, 1], [0, 1], [+1, 1], [+1, 0])[i:i+2]
+    for char in binary_code[2:]:
+        if (alpha + beta) % 2 == 1:
+            alpha, beta, center, left, right = (
+                1, 1, alpha * left + beta * right,
+                (alpha + (alpha > beta)) * left + (beta - (beta > alpha)) * right,
+                (alpha - (alpha > beta)) * left + (beta + (beta > alpha)) * right
+            )
+            left, right = ((left, center) if char == "0" else (center, right))
+        elif "1" not in bin(alpha + beta)[3:]:
+            if char == "1" and alpha == 1:
+                beta += alpha + beta
+            elif char == "0" and beta == 1:
+                alpha += alpha + beta
+            elif char == "0" and alpha == 1:
+                beta -= (alpha + beta) // 4
+            elif char == "1" and beta == 1:
+                alpha -= (alpha + beta) // 4
+        elif alpha > beta:
+            alpha -= (-1)**(char == "0") * ((alpha + beta) & -(alpha + beta)) // 2
+        else:
+            beta -= (-1)**(char == "1") * ((alpha + beta) & -(alpha + beta)) // 2
+    return Fraction(*(alpha * left + beta * right))
+
+
+def khamkou_230219_left_subtree(n: int):
+    yield Fraction(0)
+    for code in get_binary_codes(n - 1):
+        yield khamkou_230219("10" + code)
+    yield Fraction(1)
+
+
+def catch(f, default_value=Exception):
+    try:
+        return f()
+    except Exception as e:
+        if default_value is Exception:
+            return e
+        return default_value
+
+
 def print_table(rows: list[str], sep=" "):
-    line_width = get_terminal_size().columns
+    line_width = catch(lambda: get_terminal_size().columns, 80)
     lengths = [max(len(x) for x in column if x) for column in zip_longest(*rows)]
     for row in rows:
         line = sep.join(x + " " * (lengths[i] - len(x)) for i, x in enumerate(row))
@@ -186,21 +267,28 @@ trees = [
     ("Khamkou(V4)", khamkou_left_subtree_v4),  # my favorite
     ("Khamkou(V5)", khamkou_left_subtree_v5),
     ("[23-02-18]", khamkou_230218_left_subtree),
+    ("[23-02-19]", khamkou_230219_left_subtree),
 ]
 for n in range(1, 11):
     print(f"\n  n = {n}")
     table = []
     fails = []
     set_fails = []
+    order_fails = []
     for tree_name, f in trees:
         tree = list(f(n))
+        # table.append([tree_name + ":"] + [str(1/x) for x in reversed(tree) if x != 0])
         table.append([tree_name + ":"] + list(map(str, tree)))
         if not set(farey_sequence(n)) <= set(tree):
             fails.append(tree_name)
         if len(set(tree)) != len(tree):
             set_fails.append(tree_name)
+        if tree != list(sorted(tree)):
+            order_fails.append(tree_name)
     if fails:
         print("Failed Farey test:", ", ".join(fails))
     if set_fails:
         print("Failed element uniqueness test:", ", ".join(fails))
+    if order_fails:
+        print("Failed order test:", ", ".join(fails))
     print_table(table, "  ")
