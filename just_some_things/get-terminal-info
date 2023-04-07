@@ -1,0 +1,47 @@
+#!/usr/bin/env python3.10
+import os
+import sys
+import select
+import contextlib
+from math import gcd
+try:
+    import termios
+except ModuleNotFoundError:
+    termios = None
+
+
+def get_background_color(timeout=0.1, default_color=None):
+    if not termios:
+        return default_color
+    stdin_fd = sys.stdin.fileno()
+    prev_flags = termios.tcgetattr(stdin_fd)
+    flags = prev_flags.copy()
+    flags[3] &= ~termios.ICANON & ~termios.ECHO
+    termios.tcsetattr(stdin_fd, termios.TCSANOW, flags)
+    sys.stdout.write("\x1b]11;?\x07")
+    sys.stdout.flush()
+    if select.select([sys.stdin], [], [], timeout)[0] != [sys.stdin]:
+        termios.tcsetattr(stdin_fd, termios.TCSADRAIN, prev_flags)
+        return default_color
+    color = os.read(stdin_fd, 24)[9:23]
+    termios.tcsetattr(stdin_fd, termios.TCSADRAIN, prev_flags)
+    with contextlib.suppress(ValueError):
+        color = tuple(int(color, 16) for color in color.decode().split("/"))
+        if len(color) == 3 and all(0 <= x <= 65535 for x in color):
+            return color
+    return default_color
+
+width, height = os.get_terminal_size()
+scale = gcd(width, height * 2)
+print("Terminal size:")
+print(f"  width  = {width}")
+print(f"  height = {height} = {height * 2} unicode squares")
+print(f"  aspect ratio = {width // scale} x {height * 2 // scale}")
+if color := get_background_color(timeout=0.1):
+    red, green, blue = color
+    print("Current background color:")
+    print(f"  red   = {red   / 65535:.5f} ≈ {red   // 256:3} / 255")
+    print(f"  green = {green / 65535:.5f} ≈ {green // 256:3} / 255")
+    print(f"  blue  = {blue  / 65535:.5f} ≈ {blue  // 256:3} / 255")
+else:
+    print("Fail to get background color!")
