@@ -45,6 +45,12 @@ class AST:
         group: Any = self.nodes[i]
         return AST(group)
 
+    def __setitem__(self, line: str, value: list[ASTNode]):
+        i = self.nodes.index(line) + 1
+        if i == len(self.nodes) or not isinstance(self.nodes[i], list):
+            self.nodes.insert(i, [])
+        self.nodes[i] = value
+
     def __str__(self):
         return self.prettify("    ")
 
