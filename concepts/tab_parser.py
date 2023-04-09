@@ -42,7 +42,8 @@ class AST:
         i = self.nodes.index(line) + 1
         if i == len(self.nodes) or not isinstance(self.nodes[i], list):
             self.nodes.insert(i, [])
-        return AST(self.nodes[i])
+        group: Any = self.nodes[i]
+        return AST(group)
 
     def __str__(self):
         return self.prettify("    ")
