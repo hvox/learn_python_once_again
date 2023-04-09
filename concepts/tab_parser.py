@@ -1,7 +1,54 @@
 from __future__ import annotations
+from dataclasses import dataclass
 from pathlib import Path
+from typing import Any, Self, TypeAlias
 
-AST = "list[AST | str]"
+
+@dataclass
+class AST:
+    nodes: list[ASTNode]
+
+    @classmethod
+    def parse(cls, source: str | list[str]) -> Self:
+        lines = source if isinstance(source, list) else split(source)
+        ast: Any = []
+        parents: Any = None
+        node, ast_lvl = ast, 0
+        for line_number, indented_line in enumerate(lines):
+            line = indented_line.lstrip("\t")
+            indent = len(indented_line) - len(line)
+            while indent > ast_lvl:
+                node.append([])
+                parents, node = [parents, node], node[-1]
+                ast_lvl += 1
+            while indent < ast_lvl:
+                parents, node = parents
+                ast_lvl -= 1
+            node.append(line)
+        return cls(ast)
+
+    def prettify(self, indent: str = "\t"):
+        def prettify(ast: list[ASTNode]):
+            result = []
+            for node in ast:
+                if isinstance(node, str):
+                    result.append(node)
+                    continue
+                result += [indent + line for line in prettify(node).split("\n")]
+            return "\n".join(result)
+        return prettify(self.nodes)
+
+    def __getitem__(self, line: str) -> AST:
+        i = self.nodes.index(line) + 1
+        if i == len(self.nodes) or not isinstance(self.nodes[i], list):
+            self.nodes.insert(i, [])
+        return AST(self.nodes[i])
+
+    def __str__(self):
+        return self.prettify("    ")
+
+
+ASTNode: TypeAlias = "str | list[ASTNode]"
 
 
 def split(string: str, line_ending: str = "\n") -> list[str]:
@@ -11,33 +58,5 @@ def split(string: str, line_ending: str = "\n") -> list[str]:
     return values
 
 
-def parse(source: str | list[str]) -> AST:
-    lines = source if isinstance(source, list) else split(source)
-    ast = node = []
-    parents, ast_lvl = None, 0
-    for line_number, indented_line in enumerate(lines):
-        line = indented_line.lstrip("\t")
-        indent = len(indented_line) - len(line)
-        while indent > ast_lvl:
-            node.append([])
-            parents, node = [parents, node], node[-1]
-            ast_lvl += 1
-        while indent < ast_lvl:
-            parents, node = parents
-            ast_lvl -= 1
-        node.append(line)
-    return ast
-
-
-def prettify(ast: AST, indent: str = "\t"):
-    result = []
-    for node in ast:
-        if isinstance(node, str):
-            result.append(node)
-            continue
-        result += [indent + line for line in prettify(node, indent).split("\n")]
-    return "\n".join(result)
-
-
-ast = parse(Path("../download-and-install").read_text())
-print(prettify(ast, " ── "))
+ast = AST.parse(Path("../download-and-install").read_text())
+print(ast.prettify(" ── "))
