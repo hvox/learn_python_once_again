@@ -46,15 +46,37 @@ def read_pixels(width: int, height: int, depth: int, clr_typ: int, data: bytes):
     data = zlib.decompress(data)
     bits_per_pixel = depth * clr_typ.channels
     print(bits_per_pixel, data.hex())
-    bytes_per_pixel = (bits_per_pixel + 7) // 8
+    d = bytes_per_pixel = (bits_per_pixel + 7) // 8
     line_length = (bits_per_pixel * width + 7) // 8 + 1
     fltrs = [data[i] for i in range(0, len(data), line_length)]
     lines = [bytearray(data[i + 1: i + line_length]) for i in range(0, len(data), line_length)]
     for y, (fltr, line) in enumerate(zip(fltrs, lines)):
-        print(y, line.hex())
-        assert fltr == 0
-        for x in range(line_length - 1):
-            line[x] = line[x]
+        print(f"{y} {fltr}:{line.hex()}")
+        assert 0 <= fltr <= 4
+        if fltr == 0:  # None
+            pass
+        elif fltr == 1:  # Sub
+            for x in range(line_length - 1):
+                line[x] = (line[x] + (line[x - d] if x >= d else 0)) % 256
+        elif fltr == 2:  # Up
+            for x in range(line_length - 1):
+                line[x] = (line[x] + (lines[y - 1][x] if y > 0 else 0)) % 256
+        elif fltr == 3:  # Avg
+            for x in range(line_length - 1):
+                left = line[x - d] if x >= d else 0
+                up = lines[y - 1][x] if y > 0 else 0
+                line[x] = (line[x] + (left + up) // 2) % 256
+        elif fltr == 4:  # Peach
+            for x in range(line_length - 1):
+                left = line[x - d] if x >= d else 0
+                up = lines[y - 1][x] if y > 0 else 0
+                upleft = lines[y - 1][x - d] if y > 0 and x >= d else 0
+                p = left + up - upleft
+                peach = (
+                    left if abs(p - up) >= abs(p - left) <= abs(p - upleft) else
+                    up if abs(p - up) <= abs(p - upleft) else upleft
+                )
+                line[x] = (line[x] + peach) % 256
     if bits_per_pixel < 8:
         lines = [
             bytes(
@@ -105,6 +127,9 @@ def read_png(png_bytes: bytes):
     return image
 
 
-for line in read_png(Path(argv[1]).read_bytes()):
-    s = str(line)
-    print(s if len(s) < 160 else s[:157] + "...")
+for png_path in argv[1:]:
+    if len(argv[1:]) > 1:
+        print("\n> " + png_path)
+    for line in read_png(Path(png_path).read_bytes()):
+        s = " ".join(pixel.hex() for pixel in line)
+        print(s if len(s) < 160 else s[:157] + "...")
