@@ -6,6 +6,19 @@ from enum import IntEnum
 from struct import unpack
 
 
+class PNGError(Exception):
+    pass
+
+
+def error(error_msg):
+    raise PNGError("Bad " + error_msg)
+
+
+def assure(condition: bool, error_msg: str):
+    if not condition:
+        error(error_msg)
+
+
 class ColorType(IntEnum):
     W = 0
     RGB = 2
@@ -24,34 +37,86 @@ class ColorType(IntEnum):
         self.channels = [1, 0, 3, 1, 2, 0, 4][number]
 
 
-SIGNATURE = b"\x89PNG\r\n\x1a\n"
-SUPPORTED_CHUNK_TYPES = b"IHDR IEND PLTE IDAT".split()
+def read_png(buf: bytes):
+    chunks = read_chunks(buf)
+    typ, data = next(chunks)
+    assure(typ == b"IHDR", "first chunk: it should be IHDR")
+    width, height, depth, clr_typ = read_header(data)
+    if clr_typ == ColorType.INDEX:
+        _, data = next_chunk(chunks, b"PLTE")
+        palette = read_palette(data)
+        _, data = next_chunk(chunks, b"IDAT")
+        pixels = read_pixel_data(width, height, clr_typ, depth, data)
+        for line in pixels:
+            for x, index in enumerate(line):
+                line[x] = palette[index[0]]
+    else:
+        _, data = next_chunk(chunks, b"IDAT")
+        pixels = read_pixel_data(width, height, clr_typ, depth, data)
+    return pixels
+
+
+def read_chunks(buf: bytes):
+    assure(buf[:8] == b"\x89PNG\r\n\x1a\n", "png signature")
+    assure(len(buf) >= 42, "file size: the file is almost empty")
+    i = 8
+    while i < len(buf):
+        assure(len(buf) - i >= 12, "chunk size")
+        length, typ = unpack(">I4s", buf[i: i + 8])
+        assure(len(buf) - i >= 12 + length, f"{typ} chunk size")
+        data = buf[i + 8: i + 8 + length]
+        i += 12 + length
+        crc = unpack(">I", buf[i - 4: i])[0]
+        assure(crc == zlib.crc32(typ + data), f"{typ} chunk CRC")
+        if typ == "IEND":
+            break
+        yield typ, data
+    else:
+        error("chunks: there must be IEND chunk at the end")
+    yield typ, data
+
+
+def next_chunk(chunks, desired_chunks: bytes):
+    desired_chunks_set = set(desired_chunks.split(b" "))
+    for typ, data in chunks:
+        if typ in desired_chunks_set:
+            return typ, data
+        assure(typ[0] & 1 << 5, f"chunk: {typ}. Expected {desired_chunks.decode()}")
+    error("chunk order: unexpected end of file")
 
 
 def read_header(data: bytes):
+    assure(len(data) == 13, "IHDR: it should be exactly 25 bytes long")
     width, height, depth, clr_typ, compression, filtr, interlace = unpack(">IIBBBBB", data)
+    assure(1 <= width <= 2**31 - 1, "width: it should be between 1 and 2^31-1")
+    assure(1 <= height <= 2**31 - 1, "height: it should be between 1 and 2^31-1")
+    assure(clr_typ in (0, 2, 3, 4, 6), "color type")
     clr_typ = ColorType(clr_typ)
-    assert 1 <= width < 2**31 and 1 <= height < 2**31 and depth in clr_typ.allowed_depths
-    assert compression == filtr == 0
-    assert interlace == 0  # TODO: support Adam7 thumbnail
-    print(width, height, depth, clr_typ.name, compression, filtr, interlace)
+    assure(depth in clr_typ.allowed_depths, "bit depth")
+    assure(compression == 0, "compression method: it should be 0")
+    assure(filtr == 0, "filter method: it should be 0")
+    # TODO: support Adam7 interlace
+    assert interlace == 0, "TODO: support Adam7 interlace"
     return (width, height, depth, clr_typ)
 
 
 def read_palette(data: bytes):
+    assure(len(data) % 3 == 0, "palette: it should have integer number of colors")
     return [data[i: i + 3] for i in range(0, len(data), 3)]
 
 
-def read_pixels(width: int, height: int, depth: int, clr_typ: int, data: bytes):
+def read_pixel_data(width: int, height: int, clr_typ: int, depth: int, data: bytes):
+    # TODO errors?
     data = zlib.decompress(data)
     bits_per_pixel = depth * clr_typ.channels
-    print(bits_per_pixel, data.hex())
     d = bytes_per_pixel = (bits_per_pixel + 7) // 8
     line_length = (bits_per_pixel * width + 7) // 8 + 1
     fltrs = [data[i] for i in range(0, len(data), line_length)]
     lines = [bytearray(data[i + 1: i + line_length]) for i in range(0, len(data), line_length)]
     for y, (fltr, line) in enumerate(zip(fltrs, lines)):
-        print(f"{y} {fltr}:{line.hex()}")
+        print(f"{y}:f{fltr} " + " ".join(
+                line[i: i + bytes_per_pixel].hex() for i in range(0, len(line), bytes_per_pixel)
+        ))
         assert 0 <= fltr <= 4
         if fltr == 0:  # None
             pass
@@ -90,41 +155,6 @@ def read_pixels(width: int, height: int, depth: int, clr_typ: int, data: bytes):
         for line in lines
     ]
     return pixels
-
-
-def read_png(png_bytes: bytes):
-    assert png_bytes[:8] == SIGNATURE
-    i, chunks = 8, []
-    while i < len(png_bytes):
-        length, typ = unpack(">I4s", png_bytes[i: i + 8])
-        data = png_bytes[i + 8: i + 8 + length]
-        i += 12 + length
-        assert zlib.crc32(typ + data) == unpack(">I", png_bytes[i - 4: i])[0]
-        chunks.append((typ, data))
-        print(f"{typ.decode()} {data.hex()}")
-        if ~typ[0] & 1 << 5 and typ not in SUPPORTED_CHUNK_TYPES:
-            print(f"  Unsupported critical chuck: {typ.decode()}", file=stderr)
-    assert chunks[0][0] == b"IHDR"
-    width, height, depth, clr_typ = read_header(chunks[0][1])
-    i, palette = 0, None
-    if clr_typ == ColorType.INDEX:
-        while chunks[i][0] != b"PLTE":
-            i += 1
-        palette = read_palette(chunks[i][1])
-    while chunks[i][0] != b"IDAT":
-        i += 1
-    lines = read_pixels(width, height, depth, clr_typ, chunks[i][1])
-    image = []
-    for y, line in enumerate(lines):
-        print("".join([["  ", "██"][bool(x[0])] for x in line]))
-        row = []
-        for pixel in line:
-            if clr_typ == ColorType.INDEX:
-                row.append(palette[pixel[0]])
-            else:
-                row.append(pixel)
-        image.append(row)
-    return image
 
 
 for png_path in argv[1:]:
