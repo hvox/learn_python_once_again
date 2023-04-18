@@ -53,6 +53,7 @@ def read_png(buf: bytes):
     else:
         _, data = next_chunk(chunks, b"IDAT")
         pixels = read_pixel_data(width, height, clr_typ, depth, data)
+    next_chunk(chunks, b"IEND")
     return pixels
 
 
@@ -68,11 +69,12 @@ def read_chunks(buf: bytes):
         i += 12 + length
         crc = unpack(">I", buf[i - 4: i])[0]
         assure(crc == zlib.crc32(typ + data), f"{typ} chunk CRC")
-        if typ == "IEND":
+        if typ == b"IEND":
             break
         yield typ, data
     else:
         error("chunks: there must be IEND chunk at the end")
+    assure(i == len(buf), "file end: there should be nothing after IEND chunk")
     yield typ, data
 
 
