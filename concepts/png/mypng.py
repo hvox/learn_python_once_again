@@ -60,6 +60,7 @@ def read_png(buf: bytes):
 def read_chunks(buf: bytes):
     assure(buf[:8] == b"\x89PNG\r\n\x1a\n", "png signature")
     assure(len(buf) >= 42, "file size: the file is almost empty")
+    idata_chunks = []
     i = 8
     while i < len(buf):
         assure(len(buf) - i >= 12, "chunk size")
@@ -69,9 +70,16 @@ def read_chunks(buf: bytes):
         i += 12 + length
         crc = unpack(">I", buf[i - 4: i])[0]
         assure(crc == zlib.crc32(typ + data), f"{typ} chunk CRC")
+        if typ == b"IDAT" and buf[i + 4:i+8] == b"IDAT":
+            idata_chunks.append(data)
+            continue
         if typ == b"IEND":
             break
-        yield typ, data
+        if typ == b"IDAT":
+            yield typ, b"".join(idata_chunks + [data])
+            idata_chunks.clear()
+        else:
+            yield typ, data
     else:
         error("chunks: there must be IEND chunk at the end")
     assure(i == len(buf), "file end: there should be nothing after IEND chunk")
