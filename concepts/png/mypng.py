@@ -93,6 +93,11 @@ def decode_png(data: bytes, fltr: Callable[[str], bool] | None = None) -> PNG:
                     pixels[4 * i: 4 * i + 4] = (l, l, l, a)
                 case (l,):
                     pixels[4 * i: 4 * i + 4] = (l, l, l, float(clr * 3 != transparent))
+    if gamma is not None and gamma != 1.0:
+        for i, value in enumerate(pixels):
+            if i % 4 == 3:
+                continue
+            pixels[i] = value ** (1 / gamma)
     image = Image(w, h, pixels)
     png = PNG(image, gamma, bitdepth)
     return png
