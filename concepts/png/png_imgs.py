@@ -196,7 +196,7 @@ def decode_idat(data: bytes, width: int, height: int, bitdepth: int, channels: i
             for x in range(width):
                 for channel in range(channels):
                     i = (x + y * width) * channels + channel
-                    j = x * bytes_per_pixel + (height - y - 1) * line_length + 1
+                    j = x * d + (height - y - 1) * line_length + 1 + channel * bitdepth // 8
                     pixels[i] = int.from_bytes(data[j: j + bitdepth // 8], "big")
     return pixels
 
