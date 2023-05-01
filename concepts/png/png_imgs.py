@@ -223,7 +223,7 @@ def split_chunks(bytes: bytes) -> list[tuple[str, bytes]]:
 def is_correct_chunk_type(typ: str | bytes):
     if isinstance(typ, str):
         typ = typ.encode("utf-8")
-    return len(typ) == 4 and typ.isalpha() and typ[2] & 5
+    return len(typ) == 4 and typ.isalpha() and typ[2] & 1 << 5 == 0
 
 
 def find_chunk(chunks: list[tuple[str, bytes]], i: int, typ: str, strict=False):
