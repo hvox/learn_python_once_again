@@ -39,7 +39,7 @@ class Chunk:
     data: bytes
 
 
-Palette = tuple[tuple[float, float, float, float], ...]
+Palette = list[tuple[float, float, float, float]]
 
 
 @dataclass
@@ -63,12 +63,15 @@ def decode_png(data: bytes, fltr: Callable[[str], bool] | None = None) -> PNG:
     w, h, bitdepth, colors = decode_ihdr(chunks[0][1])
     gama_index = find_chunk(chunks, 1, "gAMA", strict=False)
     plte_index = find_chunk(chunks, 1, "PLTE", strict=False)
+    trns_index = find_chunk(chunks, 1, "tRNS", strict=False)
     idat_index = find_chunk(chunks, 1, "IDAT", strict=True)
-    assure(gama_index <= plte_index < idat_index, "chunk ordering")
     gamma = decode_gama(chunks[gama_index][1]) if gama_index != -1 else None
     if colors is None:
         assure(plte_index != -1, "color type")
         colors = decode_plte(chunks[plte_index][1])
+        alphas = chunks[trns_index][1] if trns_index != -1 else []
+        for i, ((r, g, b, _), alpha) in enumerate(zip(colors, alphas)):
+            colors[i] = (r, g, b, alpha / 255)
     channels = len(colors) if isinstance(colors, str) else 1
     pixel_data: Any = decode_idat(chunks[idat_index][1], w, h, bitdepth, channels)
     # TODO: my array type, that does not require value for initialization
@@ -118,7 +121,7 @@ def decode_gama(data: bytes) -> float:
 
 def decode_plte(data: bytes) -> Palette:
     assure(len(data) % 3 == 0, "PLTE size")
-    return tuple((r / 255, g / 255, b / 255, 1.0) for r, g, b in (data[i: i + 3] for i in range(0, len(data), 3)))
+    return [(r / 255, g / 255, b / 255, 1.0) for r, g, b in (data[i: i + 3] for i in range(0, len(data), 3))]
 
 
 def decode_idat(data: bytes, width: int, height: int, bitdepth: int, channels: int) -> Any:
@@ -232,3 +235,8 @@ C_TYPES: dict[str, str] = {
 
 def new_array(typ: str, content):
     return array(C_TYPES[typ], content)
+
+
+def is_sorted(elements, ignore=()):
+    xs = [x for x in elements if x not in ignore]
+    return xs == list(sorted(xs))
