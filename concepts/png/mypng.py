@@ -70,9 +70,13 @@ def decode_png(data: bytes, fltr: Callable[[str], bool] | None = None) -> PNG:
         assure(plte_index != -1, "color type")
         colors = decode_plte(chunks[plte_index][1])
     channels = len(colors) if isinstance(colors, str) else 1
-    pixels: Any = decode_idat(chunks[idat_index][1], w, h, bitdepth, channels)
-    if not isinstance(colors, str):
-        pixels = sum((colors[color_index] for color_index in pixels), array("f"))
+    pixel_data: Any = decode_idat(chunks[idat_index][1], w, h, bitdepth, channels)
+    if isinstance(colors, str):
+        raise NotImplementedError()
+    else:
+        pixels = new_array("f32", [0] * h * w * 4)
+        for i, color_index in enumerate(pixel_data):
+            pixels[4*i:4*i+4] = new_array("f32", colors[color_index])
     image = Image(w, h, pixels)
     png = PNG(image, gamma, bitdepth)
     return png
@@ -105,54 +109,47 @@ def decode_plte(data: bytes) -> Palette:
 
 def decode_idat(data: bytes, width: int, height: int, bitdepth: int, channels: int) -> Any:
     # TODO: raise PNGError on errors?
-    data = decompress(data)
+    data = bytearray(decompress(data))
     bits_per_pixel = bitdepth * channels
     d = bytes_per_pixel = (bits_per_pixel + 7) // 8
     line_length = (bits_per_pixel * width + 7) // 8 + 1
-    fltrs = [data[i] for i in range(0, len(data), line_length)]
-    lines = [bytearray(data[i + 1: i + line_length]) for i in range(0, len(data), line_length)]
-    for y, (fltr, line) in enumerate(zip(fltrs, lines)):
-        assert 0 <= fltr <= 4
+    for y in range(height):
+        fltr = data[y * line_length]
         if fltr == 0:  # None
             pass
         elif fltr == 1:  # Sub
-            for x in range(line_length - 1):
-                line[x] = (line[x] + (line[x - d] if x >= d else 0)) % 256
+            for x, i in enumerate(range(y * line_length + 1, (y + 1) * line_length)):
+                data[i] = (data[i] + (data[i - d] if x >= d else 0)) % 256
         elif fltr == 2:  # Up
-            for x in range(line_length - 1):
-                line[x] = (line[x] + (lines[y - 1][x] if y > 0 else 0)) % 256
+            for x, i in enumerate(range(y * line_length + 1, (y + 1) * line_length)):
+                data[i] = (data[i] + (data[i - line_length] if y > 0 else 0)) % 256
         elif fltr == 3:  # Avg
-            for x in range(line_length - 1):
-                left = line[x - d] if x >= d else 0
-                up = lines[y - 1][x] if y > 0 else 0
-                line[x] = (line[x] + (left + up) // 2) % 256
+            for x, i in enumerate(range(y * line_length + 1, (y + 1) * line_length)):
+                left = data[i - d] if x >= d else 0
+                up = data[i - line_length] if y > 0 else 0
+                data[x] = (data[i] + (left + up) // 2) % 256
         elif fltr == 4:  # Peach
-            for x in range(line_length - 1):
-                left = line[x - d] if x >= d else 0
-                up = lines[y - 1][x] if y > 0 else 0
-                upleft = lines[y - 1][x - d] if y > 0 and x >= d else 0
+            for x, i in enumerate(range(y * line_length + 1, (y + 1) * line_length)):
+                left = data[i - d] if x >= d else 0
+                up = data[i - line_length] if y > 0 else 0
+                upleft = data[i - line_length - d] if y > 0 and x >= d else 0
                 p = left + up - upleft
                 peach = (
-                    left
-                    if abs(p - up) >= abs(p - left) <= abs(p - upleft)
-                    else up
-                    if abs(p - up) <= abs(p - upleft)
+                    left if abs(p - up) >= abs(p - left) <= abs(p - upleft)
+                    else up if abs(p - up) <= abs(p - upleft)
                     else upleft
                 )
-                line[x] = (line[x] + peach) % 256
+                data[i] = (data[i] + peach) % 256
+    pixels = new_array("u16" if bitdepth > 8 else "u8", [0] * height * width * channels)
     if bits_per_pixel < 8:
-        lines = [
-            bytearray(
-                line[x // 8] >> (7 - (x % 8)) & ((1 << bits_per_pixel) - 1)
-                for x in range(0, width * bits_per_pixel, bits_per_pixel)
-            )
-            for line in lines
-        ]
-    pixels = [
-        [line[x * bytes_per_pixel: x * bytes_per_pixel + bytes_per_pixel] for x in range(width)]
-        for line in lines
-    ]
-    return bytes(channel for line in pixels for pixel in line for channel in pixel)
+        assert channels == 1
+        for y in range(height):
+            for x in range(width):
+                i = x * bits_per_pixel + (height - y - 1) * line_length * 8 + 8
+                pixels[x + y * width] = data[i // 8] >> (7 - (i % 8)) & ((1 << bits_per_pixel) - 1)
+    else:
+        raise NotImplementedError()
+    return pixels
 
 
 def split_chunks(bytes: bytes) -> list[tuple[str, bytes]]:
@@ -199,3 +196,19 @@ class PNGError(Exception):
 def assure(condition: bool, error_location: str):
     if not condition:
         raise PNGError.blame(error_location)
+
+
+C_TYPES: dict[str, str] = {
+    f"{typ}{size}": next(ch for ch in codes if array(ch).itemsize * 8 >= size)
+    for typ, codes, sizes in [
+        ("u", "BHILQ", [8, 16, 32, 64]),
+        ("i", "bhilq", [8, 16, 32, 64]),
+        ("f", "fd", [32, 64]),
+        # TODO: add bools
+    ]
+    for size in sizes
+}
+
+
+def new_array(typ: str, content):
+    return array(C_TYPES[typ], content)
