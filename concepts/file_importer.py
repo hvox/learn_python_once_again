@@ -48,7 +48,7 @@ def read_lines(path: Path) -> list[str]:
 
 
 def read_grid(path: Path) -> list[list[str]]:
-    return [list(map(descape, line.split("\t"))) for line in read_lines(path)]
+    return [list(map(unwrap, line.split("\t"))) for line in read_lines(path)]
 
 
 def read_table(path: Path) -> list[tuple[str, ...]]:
@@ -65,8 +65,7 @@ def read_dict(path: Path) -> dict[str, tuple[str, ...]]:
     return {key: ValueType(*info) for key, *info in rows}
 
 
-# TODO: finde better name for that function
-def descape(source: str) -> str:
+def unwrap(source: str) -> str:
     i = 0
     cell_value = []
     while i < len(source):
