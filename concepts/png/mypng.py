@@ -70,17 +70,15 @@ def decode_png(data: bytes, fltr: Callable[[str], bool] | None = None) -> PNG:
         assure(plte_index != -1, "color type")
         colors = decode_plte(chunks[plte_index][1])
     channels = len(colors) if isinstance(colors, str) else 1
-    pixels = decode_idat(chunks[idat_index][1], w, h, bitdepth, channels)
+    pixels: Any = decode_idat(chunks[idat_index][1], w, h, bitdepth, channels)
     if not isinstance(colors, str):
-        pixels = sum((colors[color_index] for color_index in pixels), ())
+        pixels = sum((colors[color_index] for color_index in pixels), array("f"))
     image = Image(w, h, pixels)
     png = PNG(image, gamma, bitdepth)
     return png
 
 
-def decode_ihdr(
-    data: bytes,
-) -> tuple[int, int, int, None | Literal["L", "LA", "RGB", "RGBA"]]:
+def decode_ihdr(data: bytes) -> tuple[int, int, int, Any]:
     width, height, depth, clr_typ, compression, filtr, interlace = unpack(">IIBBBBB", data)
     assure(1 <= width <= 2**31 - 1 and 1 <= height <= 2**31 - 1, "image size")
     assure(compression == 0 and filtr == 0 and interlace in (0, 1), "IHDR last bytes")
@@ -105,7 +103,7 @@ def decode_plte(data: bytes) -> Palette:
     return tuple((r / 255, g / 255, b / 255, 1.0) for r, g, b in (data[i: i + 3] for i in range(0, len(data), 3)))
 
 
-def decode_idat(data: bytes, width: int, height: int, bitdepth: int, channels: int) -> array:
+def decode_idat(data: bytes, width: int, height: int, bitdepth: int, channels: int) -> Any:
     # TODO: raise PNGError on errors?
     data = decompress(data)
     bits_per_pixel = bitdepth * channels
@@ -144,16 +142,17 @@ def decode_idat(data: bytes, width: int, height: int, bitdepth: int, channels: i
                 line[x] = (line[x] + peach) % 256
     if bits_per_pixel < 8:
         lines = [
-            bytes(
+            bytearray(
                 line[x // 8] >> (7 - (x % 8)) & ((1 << bits_per_pixel) - 1)
                 for x in range(0, width * bits_per_pixel, bits_per_pixel)
             )
             for line in lines
         ]
     pixels = [
-        [line[x * bytes_per_pixel: x * bytes_per_pixel + bytes_per_pixel] for x in range(width)] for line in lines
+        [line[x * bytes_per_pixel: x * bytes_per_pixel + bytes_per_pixel] for x in range(width)]
+        for line in lines
     ]
-    return b"".join(sum(pixels, []))
+    return bytes(channel for line in pixels for pixel in line for channel in pixel)
 
 
 def split_chunks(bytes: bytes) -> list[tuple[str, bytes]]:
