@@ -71,12 +71,26 @@ def decode_png(data: bytes, fltr: Callable[[str], bool] | None = None) -> PNG:
         colors = decode_plte(chunks[plte_index][1])
     channels = len(colors) if isinstance(colors, str) else 1
     pixel_data: Any = decode_idat(chunks[idat_index][1], w, h, bitdepth, channels)
-    if isinstance(colors, str):
-        raise NotImplementedError()
-    else:
-        pixels = new_array("f32", [0] * h * w * 4)
+    # TODO: my array type, that does not require value for initialization
+    pixels = FloatArray("f", new_array("f32", [0] * w * h * 4))
+    if not isinstance(colors, str):
         for i, color_index in enumerate(pixel_data):
-            pixels[4*i:4*i+4] = new_array("f32", colors[color_index])
+            pixels[4 * i: 4 * i + 4] = new_array("f32", colors[color_index])
+    elif channels == 4:
+        for i, integer_value in enumerate(pixel_data):
+            pixels[i] = integer_value / (2**bitdepth - 1)
+    else:
+        one = 2**bitdepth - 1
+        for i in range(w * h):
+            match tuple(x / one for x in pixel_data[i * channels: (i + 1) * channels]):
+                case r, g, b, a:
+                    pixels[4 * i: 4 * i + 4] = (r, g, b, a)
+                case r, g, b:
+                    pixels[4 * i: 4 * i + 4] = (r, g, b, 1.0)
+                case l, a:
+                    pixels[4 * i: 4 * i + 4] = (l, l, l, a)
+                case (l,):
+                    pixels[4 * i: 4 * i + 4] = (l, l, l, 1.0)
     image = Image(w, h, pixels)
     png = PNG(image, gamma, bitdepth)
     return png
@@ -127,7 +141,7 @@ def decode_idat(data: bytes, width: int, height: int, bitdepth: int, channels: i
             for x, i in enumerate(range(y * line_length + 1, (y + 1) * line_length)):
                 left = data[i - d] if x >= d else 0
                 up = data[i - line_length] if y > 0 else 0
-                data[x] = (data[i] + (left + up) // 2) % 256
+                data[i] = (data[i] + (left + up) // 2) % 256
         elif fltr == 4:  # Peach
             for x, i in enumerate(range(y * line_length + 1, (y + 1) * line_length)):
                 left = data[i - d] if x >= d else 0
@@ -148,7 +162,13 @@ def decode_idat(data: bytes, width: int, height: int, bitdepth: int, channels: i
                 i = x * bits_per_pixel + (height - y - 1) * line_length * 8 + 8
                 pixels[x + y * width] = data[i // 8] >> (7 - (i % 8)) & ((1 << bits_per_pixel) - 1)
     else:
-        raise NotImplementedError()
+        assert bitdepth % 8 == 0
+        for y in range(height):
+            for x in range(width):
+                for channel in range(channels):
+                    i = (x + y * width) * channels + channel
+                    j = x * bytes_per_pixel + (height - y - 1) * line_length + 1
+                    pixels[i] = int.from_bytes(data[j: j + bitdepth // 8], "big")
     return pixels
 
 
