@@ -1,6 +1,5 @@
 from collections import namedtuple
 from inspect import currentframe
-from os import getcwd
 from pathlib import Path
 from typing import Any, Callable, Generic, TypeVar
 
@@ -14,17 +13,25 @@ class Files(Generic[T]):
 
     def __getitem__(self, local_path: str) -> T:
         frame: Any = currentframe()
-        root = Path(frame.f_back.f_globals.get("__file__", getcwd() + "/x")).resolve().parent
-        # TODO: search for path from parent directory too
+        root = Path(frame.f_back.f_globals["__file__"]).resolve().parent
         path = root.joinpath(*local_path.split("/"))
-        if path not in self.cache:
-            self.cache[path] = self.load(path)
+        while not path.exists() and path not in self.cache and root.parent != root:
+            root = root.parent
+            path = root.joinpath(*local_path.split("/"))
+        if path in self.cache:
+            return self.cache[path]
+        if not path.exists():
+            raise FileNotFoundError(f"???/{local_path}")
+        self.cache[path] = self.load(path)
         return self.cache[path]
 
     def __setitem__(self, local_path: str, data: T):
         frame: Any = currentframe()
-        root = Path(frame.f_back.f_globals.get("__file__", getcwd() + "/x")).resolve().parent
+        root = Path(frame.f_back.f_globals["__file__"]).resolve().parent
         path = root.joinpath(*local_path.split("/"))
+        while not path.exists() and path not in self.cache and root.parent != root:
+            root = root.parent
+            path = root.joinpath(*local_path.split("/"))
         self.cache[path] = data
 
 
