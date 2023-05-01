@@ -9,6 +9,7 @@ from typing import Any, Callable, Literal, NamedTuple, Self, Sequence
 from zlib import compress, crc32, decompress
 
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+KNOWN_AUXILIARY_CHUNKS = set("gAMA tRNS".split())  # TODO: iTXt
 
 
 class FloatArray(array):
@@ -99,7 +100,18 @@ def decode_png(data: bytes, fltr: Callable[[str], bool] | None = None) -> PNG:
                 continue
             pixels[i] = value ** (1 / gamma)
     image = Image(w, h, pixels)
-    png = PNG(image, gamma, bitdepth)
+    extra_chunks: dict[str, list[Chunk]] = {}
+    for typ, data in chunks[1: plte_index if plte_index != -1 else idat_index]:
+        extra_chunks.setdefault(typ, []).append(Chunk(typ, "begin", data))
+    for typ, data in chunks[plte_index + 1: idat_index if plte_index != -1 else 0]:
+        extra_chunks.setdefault(typ, []).append(Chunk(typ, "palette", data))
+    for typ, data in chunks[idat_index + 1: len(chunks) - 1]:
+        extra_chunks.setdefault(typ, []).append(Chunk(typ, "end", data))
+    for typ in list(extra_chunks.keys()):
+        if typ in KNOWN_AUXILIARY_CHUNKS or not fltr(typ):
+            del extra_chunks[typ]
+    # TODO: tags
+    png = PNG(image, gamma, bitdepth, colors=colors, extra_chunks=extra_chunks)
     return png
 
 
