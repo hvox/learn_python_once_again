@@ -9,7 +9,7 @@ from typing import Any, Callable, Literal, NamedTuple, Self, Sequence
 from zlib import compress, crc32, decompress
 
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
-KNOWN_AUXILIARY_CHUNKS = set("gAMA tRNS".split())  # TODO: iTXt
+KNOWN_AUXILIARY_CHUNKS = set("gAMA tRNS iTXt".split())
 
 
 class FloatArray(array):
@@ -99,7 +99,12 @@ def decode_png(data: bytes, fltr: Callable[[str], bool] | None = None) -> PNG:
             if i % 4 == 3:
                 continue
             pixels[i] = value ** (1 / gamma)
-    image = Image(w, h, pixels)
+    tags = {}
+    for typ, data in chunks:
+        if typ != "iTXt":
+            continue
+        keyword, text = decode_itxt(data)
+        tags[keyword] = text
     extra_chunks: dict[str, list[Chunk]] = {}
     for typ, data in chunks[1: plte_index if plte_index != -1 else idat_index]:
         extra_chunks.setdefault(typ, []).append(Chunk(typ, "begin", data))
@@ -110,8 +115,8 @@ def decode_png(data: bytes, fltr: Callable[[str], bool] | None = None) -> PNG:
     for typ in list(extra_chunks.keys()):
         if typ in KNOWN_AUXILIARY_CHUNKS or not fltr(typ):
             del extra_chunks[typ]
-    # TODO: tags
-    png = PNG(image, gamma, bitdepth, colors=colors, extra_chunks=extra_chunks)
+    image = Image(w, h, pixels)
+    png = PNG(image, gamma, bitdepth, colors=colors, tags=tags, extra_chunks=extra_chunks)
     return png
 
 
@@ -148,6 +153,17 @@ def decode_trns(data: bytes, colors: str) -> tuple[int, int, int]:
     assure(len(data) * 2 == len(colors), "tRNS chunk")
     clr: Any = unpack(">SSS", data) if colors == "RGB" else unpack(">S", data) * 3
     return clr
+
+
+def decode_itxt(data: bytes) -> tuple[str, str]:
+    i = data.index(0)
+    keyword = data[:i].decode("latin-1")
+    assure(1 <= len(keyword) <= 79, "iTXt keyword")
+    compressed, compression_method = data[i + 1: i + 3]
+    assure(compressed == 0 or compression_method == 0, "compression method")
+    i = data.index(0, data.index(0, i + 3) + 1) + 1
+    encoded_text = decompress(data[i:]) if compressed else data[i:]
+    return keyword, encoded_text.decode("utf-8")
 
 
 def decode_idat(data: bytes, width: int, height: int, bitdepth: int, channels: int) -> Any:
