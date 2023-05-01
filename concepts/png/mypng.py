@@ -66,6 +66,7 @@ def decode_png(data: bytes, fltr: Callable[[str], bool] | None = None) -> PNG:
     trns_index = find_chunk(chunks, 1, "tRNS", strict=False)
     idat_index = find_chunk(chunks, 1, "IDAT", strict=True)
     gamma = decode_gama(chunks[gama_index][1]) if gama_index != -1 else None
+    transparent = decode_trns(chunks[trns_index][1], colors) if trns_index != -1 else None
     if colors is None:
         assure(plte_index != -1, "color type")
         colors = decode_plte(chunks[plte_index][1])
@@ -78,22 +79,20 @@ def decode_png(data: bytes, fltr: Callable[[str], bool] | None = None) -> PNG:
     pixels = FloatArray("f", new_array("f32", [0] * w * h * 4))
     if not isinstance(colors, str):
         for i, color_index in enumerate(pixel_data):
-            pixels[4 * i: 4 * i + 4] = new_array("f32", colors[color_index])
-    elif channels == 4:
-        for i, integer_value in enumerate(pixel_data):
-            pixels[i] = integer_value / (2**bitdepth - 1)
+            pixels[4 * i: 4 * i + 4] = colors[color_index]
     else:
         one = 2**bitdepth - 1
         for i in range(w * h):
+            clr = tuple(pixel_data[i * channels: (i + 1) * channels])
             match tuple(x / one for x in pixel_data[i * channels: (i + 1) * channels]):
                 case r, g, b, a:
                     pixels[4 * i: 4 * i + 4] = (r, g, b, a)
                 case r, g, b:
-                    pixels[4 * i: 4 * i + 4] = (r, g, b, 1.0)
+                    pixels[4 * i: 4 * i + 4] = (r, g, b, float(clr != transparent))
                 case l, a:
                     pixels[4 * i: 4 * i + 4] = (l, l, l, a)
                 case (l,):
-                    pixels[4 * i: 4 * i + 4] = (l, l, l, 1.0)
+                    pixels[4 * i: 4 * i + 4] = (l, l, l, float(clr * 3 != transparent))
     image = Image(w, h, pixels)
     png = PNG(image, gamma, bitdepth)
     return png
@@ -122,6 +121,16 @@ def decode_gama(data: bytes) -> float:
 def decode_plte(data: bytes) -> Palette:
     assure(len(data) % 3 == 0, "PLTE size")
     return [(r / 255, g / 255, b / 255, 1.0) for r, g, b in (data[i: i + 3] for i in range(0, len(data), 3))]
+
+
+def decode_trns(data: bytes, colors: str) -> tuple[int, int, int]:
+    if not isinstance(colors, str):
+        return None
+    if colors in ("LA", "RGBA"):
+        raise PNGError("tRNS is incompatible with color type")
+    assure(len(data) * 2 == len(colors), "tRNS chunk")
+    clr: Any = unpack(">SSS", data) if colors == "RGB" else unpack(">S", data) * 3
+    return clr
 
 
 def decode_idat(data: bytes, width: int, height: int, bitdepth: int, channels: int) -> Any:
