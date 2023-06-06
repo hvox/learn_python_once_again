@@ -1,7 +1,7 @@
 from collections import namedtuple
 from inspect import currentframe
 from pathlib import Path
-from typing import Any, Callable, Generic, TypeVar
+from typing import Any, Callable, Generic, TypeVar, Type
 
 T = TypeVar("T")
 
