@@ -2,8 +2,10 @@ from typing import Any
 
 
 class TabbedText:
-    def __init__(self, source: str | list[Any], parent: Any = None):
+    def __init__(self, source: str | list[Any] | None = None, parent: Any = None):
         self.parent = parent
+        if source is None:
+            source = []
         if isinstance(source, list):
             self.blocks = source
             return
@@ -27,6 +29,18 @@ class TabbedText:
                 stack[-1][1].append(group)
             stack[-1][1].append(line)
         self.blocks = blocks[:-1]
+
+    def prepend(self, name):
+        block = []
+        self.blocks.insert(0, block)
+        self.blocks.insert(0, name)
+        return TabbedText(block, self)
+
+    def append(self, name):
+        block = []
+        self.blocks.append(name)
+        self.blocks.append(block)
+        return TabbedText(block, self)
 
     def __getitem__(self, name: str):
         try:
@@ -61,6 +75,8 @@ class TabbedText:
         for item in block:
             if isinstance(item, str):
                 lines.append(item)
+                continue
+            if item == []:
                 continue
             for line in TabbedText.block_to_str(item).split("\n"):
                 # if any(char != "\t" for char in line):
