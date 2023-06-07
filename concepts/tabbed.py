@@ -28,22 +28,24 @@ class TabbedText:
         self.blocks = blocks[:-1]
 
     def __getitem__(self, name: str):
-        for i, line in enumerate(self.blocks):
-            if line == name:
-                if not isinstance(self.blocks[i+1], list):
-                    self.blocks.insert(i + 1, [])
-                return TabbedText(self.blocks[i+1])
-        raise KeyError(name)
+        try:
+            i = self.blocks.index(name)
+        except ValueError:
+            raise KeyError(name)
+        if not isinstance(self.blocks[i + 1], list):
+            self.blocks.insert(i + 1, [])
+        return TabbedText(self.blocks[i + 1])
 
     def __setitem__(self, name: str, value: list[Any]):
-        for i, line in enumerate(self.blocks):
-            if line == name:
-                if not isinstance(self.blocks[i+1], list):
-                    self.blocks.insert(i + 1, ())
-                self.blocks[i + 1] = value
-                return
-        self.blocks.append(name)
-        self.blocks.append(value)
+        try:
+            i = self.blocks.index(name)
+        except ValueError:
+            self.blocks.append(name)
+            self.blocks.append(value)
+            return
+        if not isinstance(self.blocks[i + 1], list):
+            self.blocks.insert(i + 1, [])
+        self.blocks[i + 1] = value
 
     def __repr__(self):
         self_as_string = str(self) + "\n"
