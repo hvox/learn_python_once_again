@@ -2,13 +2,14 @@ from typing import Any
 
 
 class TabbedText:
-    def __init__(self, source: str | list[str]):
+    def __init__(self, source: str | list[Any], parent: Any = None):
+        self.parent = parent
         if isinstance(source, list):
             self.blocks = source
             return
         if source[-1:] != "\n":
             source += "\n"
-        blocks = []
+        blocks: list[str | list[Any]] = []
         stack = [(0, blocks)]
         for tabbed_line in source.split("\n"):
             line = tabbed_line.lstrip("\t")
@@ -34,7 +35,7 @@ class TabbedText:
             raise KeyError(name)
         if not isinstance(self.blocks[i + 1], list):
             self.blocks.insert(i + 1, [])
-        return TabbedText(self.blocks[i + 1])
+        return TabbedText(self.blocks[i + 1], self)
 
     def __setitem__(self, name: str, value: list[Any]):
         try:
