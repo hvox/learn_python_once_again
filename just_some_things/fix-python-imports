@@ -1,0 +1,93 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import os
+import ast
+import builtins
+import sys
+from pathlib import Path
+
+BUILTINS = set(dir(builtins))
+META_NAMES = {"annotations"}
+PYTHON_MODULES = {"os", "ast", "builtins", "sys"}
+
+
+class VariableVisitor(ast.NodeVisitor):
+    def __init__(self, defs: set[str] | None = None, vars: set[str] | None = None):
+        self.defs = set(defs if defs else ())
+        self.vars = set(vars if vars else ())
+
+    @property
+    def undefined_variables(self) -> set[str]:
+        return self.vars - self.defs - BUILTINS
+
+    @property
+    def unused_variables(self) -> set[str]:
+        return self.defs - self.vars - META_NAMES
+
+    def visit_Name(self, node: ast.Name):
+        if isinstance(node.ctx, ast.Load):
+            self.vars.add(node.id)
+        elif isinstance(node.ctx, ast.Store):
+            self.defs.add(node.id)
+        self.generic_visit(node)
+
+    def visit_FunctionDef(self, node: ast.FunctionDef):
+        self.defs.add(node.name)
+        for kwarg in node.args.args + node.args.kwonlyargs:
+            self.defs.add(kwarg.arg)
+        if node.args.vararg:
+            self.defs.add(node.args.vararg.arg)
+        if node.args.kwarg:
+            self.defs.add(node.args.kwarg.arg)
+        self.generic_visit(node)
+
+    def visit_Import(self, node: ast.Import):
+        for variable in (alias.name for alias in node.names):
+            self.defs.add(variable)
+        self.generic_visit(node)
+
+    def visit_ImportFrom(self, node: ast.ImportFrom):
+        for variable in (alias.name for alias in node.names):
+            self.defs.add(variable)
+        self.generic_visit(node)
+
+    def visit_GeneratorExp(self, node: ast.GeneratorExp):
+        for variable in (gen.target.id for gen in node.generators):
+            self.defs.add(variable)
+        self.generic_visit(node)
+
+    def visit_ClassDef(self, node: ast.ClassDef):
+        self.defs.add(node.name)
+        self.generic_visit(node)
+
+    @classmethod
+    def find_variables(cls, source: str):
+        self = cls()
+        self.visit(ast.parse(source))
+        return self
+
+    def __repr__(self):
+        defs = "{" + ", ".join(map(repr, sorted(self.defs))) + "}"
+        vars = "{" + ", ".join(map(repr, sorted(self.vars))) + "}"
+        return f"{self.__class__.__name__}(defs={defs}, vars={vars})"
+
+
+library = Path(os.getenv("GIT_PROJECTS_DIR"), "learn_python_once_again/my_personal_snippet_library/")
+
+
+added_imports = []
+added_definitions = []
+for arg in sys.argv[1:]:
+    var_info = VariableVisitor.find_variables(Path(arg).read_text())
+    # print("Undefined:", var_info.undefined_variables)
+    # print("Unused:", var_info.unused_variables)
+    for variable in var_info.undefined_variables:
+        if variable in PYTHON_MODULES:
+            added_imports.append(f"import {variable}")
+        elif (path := Path(library, variable + ".py")).exists():
+            lines = path.read_text().split("\n")
+            lines = lines[: lines.index('if __name__ == "__main__":')]
+            added_definitions.extend(lines)
+for line in added_imports + added_definitions:
+    print(line)
