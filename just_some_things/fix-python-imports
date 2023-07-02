@@ -5,6 +5,7 @@ import os
 import ast
 import builtins
 import sys
+import contextlib
 from pathlib import Path
 
 BUILTINS = set(dir(builtins))
@@ -82,12 +83,13 @@ for arg in sys.argv[1:]:
     var_info = VariableVisitor.find_variables(Path(arg).read_text())
     # print("Undefined:", var_info.undefined_variables)
     # print("Unused:", var_info.unused_variables)
-    for variable in var_info.undefined_variables:
+    for variable in sorted(var_info.undefined_variables):
         if variable in PYTHON_MODULES:
             added_imports.append(f"import {variable}")
         elif (path := Path(library, variable + ".py")).exists():
             lines = path.read_text().split("\n")
-            lines = lines[: lines.index('if __name__ == "__main__":')]
+            with contextlib.suppress(ValueError):
+                lines = lines[: lines.index('if __name__ == "__main__":')]
             added_definitions.extend(lines)
 for line in added_imports + added_definitions:
     print(line)
