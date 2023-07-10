@@ -12,6 +12,7 @@ class Var:
         return f"{self.name}={self.value}"
 
 
-x = Var("x", 123)
+y = Var("x", 123)
+x = y
 x @= 321
-print(x)
+print(y)
