@@ -1,4 +1,5 @@
 """Rational numbers."""
+# TODO: the __index__ for integer numbers!
 import itertools
 import math
 import numbers
