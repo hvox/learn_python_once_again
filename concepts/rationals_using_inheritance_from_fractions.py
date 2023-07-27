@@ -73,9 +73,11 @@ class Rational(Fraction):
     def __format__(self, format_specification: str) -> str:
         fmt = Format.parse(format_specification)
         print(f"number={self!s}   format={fmt!r}")
-        if fmt.typ in "fF":
-            digits = list(map(str, self.digits(fmt.precision)))
+        if fmt.typ in "fF%":
+            digits = list(map(str, self.digits(fmt.precision + 2)))
             print("digits:", digits)
+            if fmt.typ == "%":
+                digits = digits[0]
             string = digits[0] + "." + "".join(digits[1:])
             if not fmt.alt:
                 string = string.removesuffix(".")
@@ -107,7 +109,7 @@ class Rational(Fraction):
 
 
 # https://docs.python.org/3/library/string.html#format-specification-mini-language
-FORMAT_SPECIFICATION_LANGUAGE = r'(([\s\S])?([<>=\^]))?([\+\- ])?(#)?(0)?(\d*)([,_])?(\.(\d*))?([eEfF])?'
+FORMAT_SPECIFICATION_LANGUAGE = r'(([\s\S])?([<>=\^]))?([\+\- ])?(#)?(0)?(\d*)([,_])?(\.(\d*))?([eEfF%])?'
 
 
 class Format(NamedTuple):
