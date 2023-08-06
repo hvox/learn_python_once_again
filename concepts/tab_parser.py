@@ -46,10 +46,21 @@ class AST:
         return AST(group)
 
     def __setitem__(self, line: str, value: list[ASTNode]):
-        i = self.nodes.index(line) + 1
+        try:
+            i = self.nodes.index(line) + 1
+        except ValueError:
+            self.nodes.append(line)
+            i = len(self.nodes)
         if i == len(self.nodes) or not isinstance(self.nodes[i], list):
             self.nodes.insert(i, [])
         self.nodes[i] = value
+
+    def __contains__(self, element: str):
+        return element in self.nodes
+
+    def prepand(self, *lines: list[ASTNode]):
+        for line in reversed(lines):
+            self.nodes.insert(0, line)
 
     def __str__(self):
         return self.prettify("    ")
@@ -66,4 +77,8 @@ def split(string: str, line_ending: str = "\n") -> list[str]:
 
 
 ast = AST.parse(Path("../download-and-install").read_text())
+# ast["aboba"] = ["132"]
+if "aboba" not in ast:
+    ast.prepand("aboba", "/aboba")
+ast["aboba"] = ["AAA"]
 print(ast.prettify(" ── "))
