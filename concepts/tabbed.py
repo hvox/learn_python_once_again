@@ -1,8 +1,11 @@
 from typing import Any
 
 
+Block = str | list["Block"]
+
+
 class TabbedText:
-    def __init__(self, source: str | list[Any] | None = None, parent: Any = None):
+    def __init__(self, source: Block | None = None, parent: Any = None):
         self.parent = parent
         if source is None:
             source = []
@@ -30,17 +33,17 @@ class TabbedText:
             stack[-1][1].append(line)
         self.blocks = blocks[:-1]
 
-    def prepend(self, name):
-        block = []
+    def prepend(self, name, items: list[Any] | None = None):
+        block = [] if items is None else items
         self.blocks.insert(0, block)
         self.blocks.insert(0, name)
-        return TabbedText(block, self)
+        return TabbedText(block, self) if items is None else self
 
-    def append(self, name):
-        block = []
+    def append(self, name, items: list[Any] | None = None):
+        block = [] if items is None else items
         self.blocks.append(name)
         self.blocks.append(block)
-        return TabbedText(block, self)
+        return TabbedText(block, self) if items is None else self
 
     def __getitem__(self, name: str):
         try:
