@@ -86,7 +86,7 @@ while running:
             height = new_height * 2
             screen.width = width
             screen.height = height
-        for _ in range(512):
+        for _ in range(2048):
             x, y = randint(0, width - 1), randint(0, height - 1)
             screen[x, y] = randint(0, 255)
         print_image(screen, palette)
