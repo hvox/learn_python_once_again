@@ -1,0 +1,30 @@
+#!/usr/bin/env python3
+from termcolor import colored
+
+
+def is_kinda_name(text: str, badness: int = 2):
+    vowels = "aeiou"
+    chunk_length = 0
+    for char in text:
+        if char in vowels:
+            chunk_length = 0
+            continue
+        chunk_length += 1
+        if chunk_length > badness:
+            return False
+    return True
+
+
+def shift(text: str, offset: int) -> str:
+    translation = {chr(i + c): chr((i + offset) % 26 + c) for c in (65, 97) for i in range(26)}
+    return "".join(translation.get(char, char) for char in text)
+
+
+for text in __import__("sys").argv[1:]:
+    for offset in range(1, 26):
+        shifted = shift(text, offset)
+        if is_kinda_name(shifted):
+            if is_kinda_name(shifted, 1):
+                shifted = f"{shifted} <- !!!"
+            shifted = colored(shifted, "yellow")
+        print(f"{offset:2}", shifted)
