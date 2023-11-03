@@ -6,7 +6,7 @@ from base64 import b64encode
 
 def copy_to_clipboard(message: str, stdout=sys.stdout):
     with contextlib.suppress(ImportError):
-        table = __import__("pd").DataFrame([message])
+        table = __import__("pandas").DataFrame([message])
         table.to_clipboard(excel=False, index=False, header=False)
         return
     with contextlib.suppress(OSError):
