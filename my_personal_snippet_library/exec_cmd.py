@@ -9,4 +9,4 @@ def exec_cmd(cmd: str | list, into: str | bytes | None = None, **kwargs):
 
 
 if __name__ == "__main__":
-    exec_cmd(f"batcat {__file__}")
+    exec_cmd(["batcat", __file__])

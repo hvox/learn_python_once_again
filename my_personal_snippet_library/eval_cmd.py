@@ -11,4 +11,4 @@ def eval_cmd(cmd: str | list, into: str | bytes | None = None, **kwargs):
 
 
 if __name__ == "__main__":
-    print(eval_cmd(f"cat {__file__}"))
+    print(eval_cmd(["cat", __file__]))
