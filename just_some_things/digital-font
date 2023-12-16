@@ -1,0 +1,119 @@
+#!/usr/bin/env python3
+"""
+Display text in my own digital font.
+
+Usage: {script} [options] [TEXT]
+
+Arguments:
+    TEXT - Text to display.
+
+Options:
+    -h, --help
+        Show this screen and exit.
+"""
+import os
+from itertools import islice
+import sys
+from contextlib import suppress
+from pathlib import Path
+
+
+CHARACTERS = [
+    [[x, y, x, y] for x in range(0, 5, 2) for y in range(-2, 9, 2)],
+    [[2, 0], [2, 2, 2, 6]],  # !
+    [[1, 5, 1, 7], [3, 5, 3, 7]],  # "
+    [[1, 0, 1, 6], [3, 0, 3, 6], [0, 2, 4, 2], [0, 4, 4, 4]],  # #
+    [[2, -2, 2, 8], [0, 0, 4, 0], [4, 0, 4, 3], [0, 3, 4, 3], [0, 3, 0, 6], [0, 6, 4, 6]],  # $
+    [[1, 6], [1, 0, 3, 6], [3, 0]],  # %
+    [],  # &
+    [[2, 5, 2, 7]],  # '
+    [[1, 1, 3, -1], [1, 1, 1, 5], [1, 5, 3, 7]],  # (
+    [[1, -1, 3, 1], [3, 1, 3, 5], [3, 5, 1, 7]],  # )
+    [[2, 1, 2, 5], [0, 2, 4, 4], [0, 4, 4, 2]],  # *
+    [[0, 3, 4, 3], [2, 1, 2, 5]],  # +
+    [[2, -2, 2, 0]],  # ,
+]
+
+
+def draw_line(buffer: list[list[int]], x1: int, y1: int, x2: int, y2: int):
+    line_length = max(abs(x2 - x1), abs(y2 - y1))
+    for i in range(line_length + 1):
+        t = i / max(line_length, 1)
+        x = x1 + round((x2 - x1) * t)
+        y = y1 + round((y2 - y1) * t)
+        buffer[y][x] = 1
+
+
+def draw_buffer(buffer: list[list[int]]):
+    if len(buffer) % 2:
+        buffer = buffer + [[0] * len(buffer[0])]
+    for line1, line2 in chunked(reversed(buffer), 2):
+        line = (" ▀▄█"[x + y * 2] for x, y in zip(line1, line2))
+        print("".join(line))
+
+
+def buffer_to_lines(buffer: list[list[int]]):
+    if len(buffer) % 2:
+        buffer = buffer + [[0] * len(buffer[0])]
+    for line1, line2 in chunked(reversed(buffer), 2):
+        line = (" ▀▄█"[x + y * 2] for x, y in zip(line1, line2))
+        yield "".join(line)
+
+
+def draw_char(buffer: list[list[int]], char: str, x0: int = 1, y0: int = 1):
+    i = (ord(char) - 32) % len(CHARACTERS)
+    for line in CHARACTERS[i]:
+        x1, y1, x2, y2 = line if len(line) == 4 else (line + line)
+        draw_line(buffer, x0 + x1, y0 + 2 + y1, x0 + x2, y0 + 2 + y2)
+
+
+def display(text: str):
+    vertices = {(x, y) for char in CHARACTERS for line in char for x, y in chunked(line, 2)}
+    print(len(vertices))
+    w, h = os.get_terminal_size()
+    buffer = [[0] * w for y in range(16)]
+    for i, char in ((i, chr(i + 32)) for i, _ in enumerate(CHARACTERS)):
+        draw_char(buffer, char, 2 + 6 * i, 2)
+    lines = list(map(list, buffer_to_lines(buffer)))
+    for y, row in enumerate(map("".join, lines)):
+        for x, char in enumerate(row):
+            if char != " ":
+                continue
+            if x % 6 == 1 and y == 0:
+                lines[y][x] = "┬"
+            elif x % 6 == 1 and y == 7:
+                lines[y][x] = "┴"
+            elif y % 7 == 0:
+                lines[y][x] = "─"
+            elif x % 6 == 1:
+                lines[y][x] = "│"
+            elif y == 6 and 1 < x < len(row) - 1 and row[x + 1] == row[x] == row[x - 1]:
+                lines[y][x] = "─"
+    for i, char in ((i, chr(i + 32)) for i, _ in enumerate(CHARACTERS)):
+        lines[0][6 * i + 3: 6 * i + 6] = ["[", char, "]"]
+    print("\n".join(map("".join, lines)))
+    buffer = [[0] * w for y in range(16)]
+    for i, char in enumerate(text):
+        draw_char(buffer, char, 2 + 6 * i, 2)
+    draw_buffer(buffer)
+
+
+def main(script_name: str, *script_args: str):
+    doc = __doc__.format(script=Path(script_name).name)
+    args = __import__("docopt").docopt(doc, script_args)
+    if args["TEXT"] is not None:
+        display(args["TEXT"])
+    else:
+        while text := input("> "):
+            display(text)
+
+
+def chunked(iterable, n: int):
+    it = iter(iterable)
+    while chunk := list(islice(it, n)):
+        yield chunk
+
+
+if __name__ == "__main__":
+    with suppress(KeyboardInterrupt):
+        main(sys.argv[0], *sys.argv[1:])
