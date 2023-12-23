@@ -1,0 +1,204 @@
+#!/usr/bin/env python3
+"""
+Display text in my own digital font.
+
+Usage: {script} [options] [TEXT]
+
+Arguments:
+    TEXT - Text to display.
+
+Options:
+    -h, --help
+        Show this screen and exit.
+"""
+import os
+from itertools import islice
+import sys
+from contextlib import suppress
+from pathlib import Path
+
+
+CHARACTERS = {
+    " ": 0b0000000000000000 + (0 << 16),
+    "!": 0b1000000000000000 + (1 << 16),
+    '"': 0b0000000000100001 + (0 << 16),
+    "#": 0b1010101000111100 + (0 << 16),
+    "$": 0b1010101011011101 + (0 << 16),
+    "%": 0b0100010000010001 + (3 << 16),
+    "&": 0b0101001111000110 + (0 << 16),
+    "'": 0b1000000000000000 + (0 << 16),
+    "(": 0b0101000000000000 + (0 << 16),
+    ")": 0b0000010100000000 + (0 << 16),
+    "*": 0b0111011100000000 + (3 << 16),
+    "+": 0b1010101000000000 + (3 << 16),
+    ",": 0b0000100000000000 + (3 << 16),
+    "-": 0b0010001000000000 + (3 << 16),
+    ".": 0b0000000000000000 + (1 << 16),
+    "/": 0b0100010000000000 + (0 << 16),
+    "0": 0b0000000011111111 + (0 << 16),
+    "1": 0b1000100000000000 + (0 << 16),
+    "2": 0b0010001011101110 + (0 << 16),
+    "3": 0b0010001011111100 + (0 << 16),
+    "4": 0b0010001000110001 + (0 << 16),
+    "5": 0b0010001011011101 + (0 << 16),
+    "6": 0b0010001011011111 + (0 << 16),
+    "7": 0b0000000011110000 + (0 << 16),
+    "8": 0b0010001011111111 + (0 << 16),
+    "9": 0b0010001011111101 + (0 << 16),
+    ":": 0b0000000000000000 + (2 << 16),
+    ";": 0b0000100000000000 + (2 << 16),
+    "<": 0b0101000000000000 + (3 << 16),
+    "=": 0b0010001000001100 + (0 << 16),
+    ">": 0b0000010100000000 + (3 << 16),
+    "?": 0b0010000011100000 + (1 << 16),
+    "@": 0b0110000011101111 + (0 << 16),
+    "A": 0b0010001011110011 + (0 << 16),
+    "B": 0b0101001011001111 + (0 << 16),
+    "C": 0b0000000011001111 + (0 << 16),
+    "D": 0b1000100011111100 + (0 << 16),
+    "E": 0b0010001011001111 + (0 << 16),
+    "F": 0b0000001011000011 + (0 << 16),
+    "G": 0b0010000011011111 + (0 << 16),
+    "H": 0b0010001000110011 + (0 << 16),
+    "I": 0b1000100011001100 + (0 << 16),
+    "J": 0b0000000000111110 + (0 << 16),
+    "K": 0b0101001000000011 + (0 << 16),
+    "L": 0b0000000000001111 + (0 << 16),
+    "M": 0b0100000100110011 + (0 << 16),
+    "N": 0b0001000100110011 + (0 << 16),
+    "O": 0b0000000011111111 + (0 << 16),
+    "P": 0b0010001011100011 + (0 << 16),
+    "Q": 0b0001000011111111 + (0 << 16),
+    "R": 0b0011001011100011 + (0 << 16),
+    "S": 0b0010001011011101 + (0 << 16),
+    "T": 0b1000100011000000 + (0 << 16),
+    "U": 0b0000000000111111 + (0 << 16),
+    "V": 0b0001000100110000 + (0 << 16),
+    "W": 0b0000100000111111 + (0 << 16),
+    "X": 0b0101010100000000 + (0 << 16),
+    "Y": 0b0100100100000000 + (0 << 16),
+    "Z": 0b0100010011001100 + (0 << 16),
+    "[": 0b1000100001001000 + (0 << 16),
+    "\\": 0b0001000100000000 + (0 << 16),
+    "]": 0b1000100010000100 + (0 << 16),
+    "^": 0b1000000010000001 + (0 << 16),
+    "_": 0b0000000000001100 + (0 << 16),
+    "`": 0b0000000100000000 + (0 << 16),
+    "a": 0b0010001011110011 + (3 << 16),
+    "b": 0b0010001000011111 + (0 << 16),
+    "c": 0b0000000011001111 + (3 << 16),
+    "d": 0b0010001000111110 + (0 << 16),
+    "e": 0b0010001011101111 + (3 << 16),
+    "f": 0b0000001011000011 + (3 << 16),
+    "g": 0b0010000011011111 + (3 << 16),
+    "h": 0b0010001000010011 + (0 << 16),
+    "i": 0b0000101000001000 + (2 << 16),
+    "j": 0b0000100000000100 + (2 << 16),
+    "k": 0b0101001000000011 + (3 << 16),
+    "l": 0b1000100010001000 + (0 << 16),
+    "m": 0b0010101000010010 + (0 << 16),
+    "n": 0b0010001000010010 + (0 << 16),
+    "o": 0b0000000011111111 + (3 << 16),
+    "p": 0b0010001011100011 + (3 << 16),
+    "q": 0b0010001011110001 + (3 << 16),
+    "r": 0b0100000100000011 + (3 << 16),
+    "s": 0b0010001011011101 + (3 << 16),
+    "t": 0b1000100011000000 + (3 << 16),
+    "u": 0b0000000000111111 + (3 << 16),
+    "v": 0b0001000100110000 + (3 << 16),
+    "w": 0b0000100000111111 + (0 << 16),
+    "x": 0b0101010100000000 + (0 << 16),
+    "y": 0b0100100100000000 + (0 << 16),
+    "z": 0b0100010011001100 + (0 << 16),
+    "{": 0b1000101001001000 + (0 << 16),
+    "|": 0b1000100000000000 + (0 << 16),
+    "}": 0b1010100010000100 + (0 << 16),
+    "~": 0b0100000100000001 + (3 << 16),
+}
+
+
+def draw_line(buffer: list[list[int]], x1: int, y1: int, x2: int, y2: int):
+    line_length = max(abs(x2 - x1), abs(y2 - y1))
+    for i in range(line_length + 1):
+        t = i / max(line_length, 1)
+        x = x1 + round((x2 - x1) * t)
+        y = y1 + round((y2 - y1) * t)
+        buffer[y][x] = 1
+
+
+def draw_buffer(buffer: list[list[int]]):
+    if len(buffer) % 2:
+        buffer = buffer + [[0] * len(buffer[0])]
+    for line1, line2 in chunked(reversed(buffer), 2):
+        line = (" ▀▄█"[x + y * 2] for x, y in zip(line1, line2))
+        print("".join(line))
+
+
+def buffer_to_lines(buffer: list[list[int]]):
+    if len(buffer) % 2:
+        buffer = buffer + [[0] * len(buffer[0])]
+    for line1, line2 in chunked(reversed(buffer), 2):
+        line = (" ▀▄█"[x + y * 2] for x, y in zip(line1, line2))
+        yield "".join(line)
+
+
+def draw_char(buffer: list[list[int]], char: str, x0: int = 1, y0: int = 1):
+    bits = CHARACTERS[char]
+    vertices = [(0, 1), (1, 1), (1, 0), (1, -1), (0, -1), (-1, -1), (-1, 0), (-1, 1)]
+    center = (0, 0)
+    if bits >> 16 == 3:
+        center = (2, 2)
+        vertices = [(2 * x + 2, 2 * y + 2) for x, y in vertices]
+    else:
+        center = (2, 4)
+        vertices = [(2 * x + 2, 4 * y + 4) for x, y in vertices]
+    lines = []
+    for i in range(8):
+        if bits >> (15 - i) & 1:
+            p1, p2 = [(x0 + x, y0 + y) for x, y in (center, vertices[i])]
+            draw_line(buffer, *p1, *p2)
+    for i in range(8):
+        if bits >> (7 - i) & 1:
+            p1, p2 = [(x0 + x, y0 + y) for x, y in [vertices[i - 1], vertices[i]]]
+            draw_line(buffer, *p1, *p2)
+    if bits >> 16 == 1:
+        draw_line(buffer, x0 + 2, y0 + 1, x0 + 2, y0 + 2)
+    elif bits >> 16 == 2:
+        draw_line(buffer, x0 + 2, y0 + 1, x0 + 2, y0 + 2)
+        draw_line(buffer, x0 + 2, y0 + 6, x0 + 2, y0 + 7)
+    for x1, y1, x2, y2 in lines:
+        draw_line(buffer, x0 + x1, y0 + y1, x0 + x2, y0 + y2)
+
+
+def display(text: str):
+    w, h = os.get_terminal_size()
+    characters = text or "".join(CHARACTERS)
+    row_size = (w - 3) // 7
+    rows = (len(characters) + row_size - 1) // row_size
+    buffer = [[0] * w for y in range(rows * 14)]
+    for i, char in enumerate(characters):
+        x = i % row_size
+        y = rows - i // row_size - 1
+        draw_char(buffer, char if char in CHARACTERS else "?", 2 + 7 * x, 2 + 14 * y)
+    draw_buffer(buffer)
+
+
+def main(script_name: str, *script_args: str):
+    doc = __doc__.format(script=Path(script_name).name)
+    args = __import__("docopt").docopt(doc, script_args)
+    if args["TEXT"] is not None:
+        display(args["TEXT"])
+    else:
+        while text := input("> "):
+            display(text)
+
+
+def chunked(iterable, n: int):
+    it = iter(iterable)
+    while chunk := list(islice(it, n)):
+        yield chunk
+
+
+if __name__ == "__main__":
+    with suppress(KeyboardInterrupt):
+        main(sys.argv[0], *sys.argv[1:])
