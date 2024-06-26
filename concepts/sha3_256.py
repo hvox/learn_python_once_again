@@ -19,33 +19,33 @@ def sha3_256(message: str | bytes):
         data.append(0x06 | 0x80)
     else:
         data.extend([0x06] + [0] * (r // 8 - (len(data) + 2) % (r // 8)) + [0x80])
-    assert len(data) * 8 == r
     bits = [byte >> shift & 1 for byte in data for shift in range(8)]
     # bits.extend([1] + [0] * (r - (len(bits) + 66) % r) + [1])
     # bits.extend([input_size >> shift & 1 for shift in range(64)])
     print(" Padding ".center(47, "─"))
     print_bits(bits)
 
-    # TODO: chunks?
-    assert len(bits) == r
-
-    # Initialization
+    # State initialization
     state = [0] * b
 
-    # Extend string at the end by a string of c zero bits, yielding one of length b
-    bits += [0] * (b - r)
+    # TODO: chunks?
+    for window in chunked(bits, r):
+        assert len(window) == r
 
-    # XOR that with state
-    state = [x ^ y for x, y in zip(state, bits)]
-    print(" Xor'd state ".center(47, "─"))
-    print_bits(state)
+        # Extend string at the end by a string of c zero bits, yielding one of length b
+        window += [0] * (b - r)
 
-    # Permutation
-    for round in range(rounds):
-        print("ROUND", round)
-        state = permutate(state, b, round)
-    print(" After permutation ".center(47, "─"))
-    print_bits(state)
+        # XOR that with state
+        state = [x ^ y for x, y in zip(state, window)]
+        print(" Xor'd state ".center(47, "─"))
+        print_bits(state)
+
+        # Permutation
+        for round in range(rounds):
+            print("ROUND", round)
+            state = permutate(state, b, round)
+        print(" After permutation ".center(47, "─"))
+        print_bits(state)
 
     hash = [sum(state[8 * i + j] << j for j in range(8)) for i in range(32)]
     return bytes(hash)
