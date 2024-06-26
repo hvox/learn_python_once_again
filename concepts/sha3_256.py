@@ -133,4 +133,6 @@ def u64_rotl(number: int, n: int = 1) -> int:
     return number
 
 
-assert sha3_256("").hex() == "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a"
+assert "a7ffc6f8bf1ed76651c14756a061d662f580ff4de43b49fa82d80a4b80f8434a" == sha3_256("").hex()
+assert "f7b9aac9823678ed5504a4b48141a1790749d57cfa6dfb0a1f92a01d046578c9" == sha3_256("aboba").hex()
+assert "6fef857c4ad7eed256b41638414db9331938e50d697696e8665b49a1077ea783" == sha3_256("\n" * 2048).hex()
