@@ -1,8 +1,12 @@
 #!/usr/bin/env -S make -f
 
-python-3.12: Python-3.12.0.tar.xz
-	tar -vxf Python-3.12.0.tar.xz
-	( cd Python-3.12.0 && ./configure --enable-optimizations --prefix="${HOME}/.local/" && make altinstall )
+python-3.13: Python-3.13.1.tar.xz
+	tar -vxf Python-3.13.1.tar.xz
+	( cd Python-3.13.1 && ./configure --enable-optimizations --prefix="${HOME}/.local/" && make altinstall )
+
+python-3.12: Python-3.12.5.tar.xz
+	tar -vxf Python-3.12.5.tar.xz
+	( cd Python-3.12.5 && ./configure --enable-optimizations --prefix="${HOME}/.local/" && make altinstall )
 
 python-3.11: Python-3.11.6.tar.xz
 	tar -vxf Python-3.11.6.tar.xz
@@ -24,8 +28,11 @@ python-3.7: Python-3.7.14.tar.xz
 	tar -vxf Python-3.7.14.tar.xz
 	( cd Python-3.7.14 && ./configure --enable-optimizations --prefix="${HOME}/.local/" && make altinstall )
 
-Python-3.12.0.tar.xz:
-	wget https://www.python.org/ftp/python/3.12.0/Python-3.12.0.tar.xz
+Python-3.13.1.tar.xz:
+	wget https://www.python.org/ftp/python/3.13.1/Python-3.13.1.tar.xz
+
+Python-3.12.5.tar.xz:
+	wget https://www.python.org/ftp/python/3.12.5/Python-3.12.5.tar.xz
 
 Python-3.11.6.tar.xz:
 	wget https://www.python.org/ftp/python/3.11.6/Python-3.11.6.tar.xz
