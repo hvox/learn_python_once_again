@@ -1,11 +1,11 @@
-from typing import Any
+from typing import Any, Callable
 from math import inf
 from itertools import product
 
 
-def roy_floyd_warshall_list2d_backend[T](
-    graph: dict[T, dict[T, float]],
-) -> dict[tuple[T, T], float]:
+def roy_floyd_warshall_list2d_backend[
+    T
+](graph: dict[T, dict[T, float]],) -> dict[tuple[T, T], float]:
     n = len(graph)
     dists = [[graph[u].get(v, inf) if u != v else 0 for v in graph] for u in graph]
     for t, u, v in product(range(n), repeat=3):
@@ -13,9 +13,9 @@ def roy_floyd_warshall_list2d_backend[T](
     return {(u, v): dist for u, u_dists in zip(graph, dists) for v, dist in zip(graph, u_dists)}
 
 
-def roy_floyd_warshall_listkey_backend[T](
-    graph: dict[T, dict[T, float]],
-) -> dict[tuple[T, T], float]:
+def roy_floyd_warshall_listkey_backend[
+    T
+](graph: dict[T, dict[T, float]],) -> dict[tuple[T, T], float]:
     vertices = list(graph)
     n = len(vertices)
     dists = [[graph[u].get(v, inf) if u != v else 0 for v in vertices] for u in vertices]
@@ -59,30 +59,27 @@ def roy_floyd_warshall_intkeys_flat(graph: dict[int, dict[int, float]]) -> list[
     return dists
 
 
-# graph = {0: {1: 23, 2: 32, 3: 100, 4: 123}, 1: {0: 10}, 2: {1: 100}, 3: {2: 1000}, 4: {0: 3, 2: 34}}
-# x = roy_floyd_warshall_flatened(graph)
-# for (u, v), dist in roy_floyd_warshall(graph).items():
-#     assert dist == x[u][v]
-#     print(u, v, "->", dist)
+IMPLEMENTATIONS: list[Callable[[dict[int, dict[int, float]]], Any]] = [
+    roy_floyd_warshall_intkeys,
+    roy_floyd_warshall_intkeys_dict,
+    roy_floyd_warshall_list2d_backend,
+    roy_floyd_warshall_listkey_backend,
+    roy_floyd_warshall_intkeys_flat,
+    roy_floyd_warshall_in_dicts,
+]
 
 
-def main():
+def main() -> None:
     from random import randint
     from time import monotonic as time_now
 
     for n in [50, 100, 200, 400]:
         print(f"  n = {n}")
-        graph = {
-            u: {v: randint(1, n) for v in range(n) if randint(1, n) >= n**0.5} for u in range(n)
+        graph: dict[int, dict[int, float]] = {
+            u: {v: randint(1, n**2) / n**2 for v in range(n) if randint(1, n) >= n**0.5}
+            for u in range(n)
         }
-        for f in [
-            roy_floyd_warshall_intkeys,
-            roy_floyd_warshall_intkeys_dict,
-            roy_floyd_warshall_list2d_backend,
-            roy_floyd_warshall_listkey_backend,
-            roy_floyd_warshall_intkeys_flat,
-            roy_floyd_warshall_in_dicts,
-        ]:
+        for f in IMPLEMENTATIONS:
             t0 = time_now()
             len(f(graph))
             t1 = time_now()

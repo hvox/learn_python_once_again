@@ -1,3 +1,6 @@
+from typing import override
+
+
 class BinaryIndexedTree2D:
     def __init__(self, array2d: list[list[int]]):
         height = len(array2d)
@@ -18,7 +21,7 @@ class BinaryIndexedTree2D:
                 dx //= 2
             self.nodes.append(row)
 
-    def sum(self, x1: int, y1: int, x2: int, y2: int):
+    def sum(self, x1: int, y1: int, x2: int, y2: int) -> int:
         x2 += 1
         result = 0
         while x2 > x1:
@@ -41,11 +44,11 @@ class BinaryIndexedTree2D:
             x1 -= x1 & (-x1)
         return result
 
-    def __getitem__(self, index: tuple[int, int]):
+    def __getitem__(self, index: tuple[int, int]) -> int:
         x, y = index
         return self.sum(x, y, x, y)
 
-    def __setitem__(self, index: tuple[int, int], value: int):
+    def __setitem__(self, index: tuple[int, int], value: int) -> None:
         delta = value - self[index]
         x, y0 = (x + 1 for x in index)
         while x < len(self.nodes):
@@ -55,7 +58,8 @@ class BinaryIndexedTree2D:
                 y += y & (-y)
             x += x & (-x)
 
-    def __repr__(self):
+    @override
+    def __repr__(self) -> str:
         height, width = self.shape
         lst = [[self[x, y] for y in range(width)] for x in range(height)]
         return f"{self.__class__.__qualname__}({lst})"

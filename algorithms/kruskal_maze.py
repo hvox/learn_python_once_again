@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 import random
 import dataclasses
 
@@ -10,14 +11,14 @@ class Obstacle:
     y2: int
 
 
-def generate(w: int, h: int, obstatcles: list[Obstacle] = []) -> list[list[int]]:
+def generate(w: int, h: int, obstatcles: Iterable[Obstacle] = ()) -> list[int]:
     active_cells = [True] * w * h
     active_walls = [True] * w * h * 2
     for obstacle in obstatcles:
         for x in range(obstacle.x1, obstacle.x2):
             for y in range(obstacle.y1, obstacle.y2):
                 active_cells[x + w * y] = False
-    walls = []
+    walls: list[tuple[int, int, int]] = []
     for x in range(w - 1):
         for y in range(h):
             walls.append((x, y, 0))
@@ -28,7 +29,7 @@ def generate(w: int, h: int, obstatcles: list[Obstacle] = []) -> list[list[int]]
 
     disjoint_sets = list(range(w * h))
 
-    def get_set(i: int):
+    def get_set(i: int) -> int:
         if disjoint_sets[i] != i:
             disjoint_sets[i] = get_set(disjoint_sets[i])
         return disjoint_sets[i]
@@ -60,7 +61,7 @@ def generate(w: int, h: int, obstatcles: list[Obstacle] = []) -> list[list[int]]
 w, h = 10, 10
 maze = generate(w, h, [Obstacle(0, 0, 2, 2), Obstacle(3, 3, 10, 6)])
 for y in reversed(range(h)):
-    row = []
+    row: list[str] = []
     for x in range(w):
         row.append("╬╣╦╗╠║╔╥╩╝═╡╚╨╞?"[maze[x + y * w]])
     print("".join(row))

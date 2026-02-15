@@ -1,7 +1,7 @@
 number_of_iterations = 0
 
 
-def prefix_function(s: str):
+def prefix_function(s: str) -> list[int]:
     dp = [0] * len(s)
     for i in range(1, len(s)):
         j = dp[i - 1]
@@ -11,7 +11,7 @@ def prefix_function(s: str):
     return dp
 
 
-def find(haystack: str, needle: str, default=None):
+def find(haystack: str, needle: str, default: None = None) -> int | None:
     s = needle + haystack
     dp = prefix_function(s)
     for i in range(len(needle) * 2 - 1, len(s)):

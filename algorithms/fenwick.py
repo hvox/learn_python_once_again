@@ -1,4 +1,10 @@
+from collections.abc import Iterator
+from typing import override
+
+
 class BinaryIndexedTree:
+    nodes: list[int]
+
     def __init__(self, elements: list[int]):
         # one redundant zero for indexation from 1
         self.nodes = [0] * (len(elements) + 1)
@@ -9,14 +15,14 @@ class BinaryIndexedTree:
                 j //= 2
             self.nodes[i] = value
 
-    def prefix_sum(self, length=0):
+    def prefix_sum(self, length: int = 0) -> int:
         result = 0
         while length:
             result += self.nodes[length]
             length -= length & (-length)
         return result
 
-    def sum(self, start: int, end: int):
+    def sum(self, start: int, end: int) -> int:
         # alternative: difference of prefix sums
         i, j, result = start, end + 1, 0
         while j > i:
@@ -27,17 +33,17 @@ class BinaryIndexedTree:
             i -= i & (-i)
         return result
 
-    def __getitem__(self, index: int):
+    def __getitem__(self, index: int) -> int:
         return self.sum(index, index)
 
-    def __setitem__(self, index: int, value: int):
+    def __setitem__(self, index: int, value: int) -> None:
         delta = value - self[index]
         index += 1
         while index < len(self.nodes):
             self.nodes[index] += delta
             index += index & (-index)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[int]:
         for i, value in enumerate(self.nodes[1:], 1):
             j = (i & (-i)) // 2
             while j:
@@ -45,8 +51,9 @@ class BinaryIndexedTree:
                 j //= 2
             yield value
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.nodes) - 1
 
-    def __repr__(self):
+    @override
+    def __repr__(self) -> str:
         return f"{self.__class__.__qualname__}({list(self)})"
