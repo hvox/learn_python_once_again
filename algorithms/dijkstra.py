@@ -3,7 +3,9 @@ import random
 from math import inf
 
 
-def dijkstras_algorithm_storing_edges[T](graph: dict[T, set[tuple[T, float]]], s: T, t: T) -> float:
+def dijkstras_algorithm_storing_edges[T](
+    graph: dict[T, set[tuple[T, float]]], s: T, t: T
+) -> float:
     visited = {}
     Q: PriorityQueue[tuple[float, T, T | None]] = PriorityQueue()
     Q.put((0, s, None))
@@ -17,9 +19,9 @@ def dijkstras_algorithm_storing_edges[T](graph: dict[T, set[tuple[T, float]]], s
 
 
 # this is my fastest implementation
-def dijkstras_algorithm_storing_edges_to_nonvisited_vertices[
-    T
-](G: dict[T, set[tuple[T, float]]], s: T, t: T) -> float:
+def dijkstras_algorithm_storing_edges_to_nonvisited_vertices[T](
+    G: dict[T, set[tuple[T, float]]], s: T, t: T
+) -> float:
     visited = {}
     Q: PriorityQueue[tuple[float, T, T | None]] = PriorityQueue()
     Q.put((0, s, None))
@@ -33,7 +35,9 @@ def dijkstras_algorithm_storing_edges_to_nonvisited_vertices[
     return visited.get(t, (inf, None))[0]
 
 
-def dijkstras_algorithm_storing_vertices[T](G: dict[T, set[tuple[T, float]]], s: T, t: T) -> float:
+def dijkstras_algorithm_storing_vertices[T](
+    G: dict[T, set[tuple[T, float]]], s: T, t: T
+) -> float:
     _ = G
     _ = s
     _ = t

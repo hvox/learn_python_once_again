@@ -46,6 +46,7 @@ def simple_multiply(u: list[int], v: list[int]) -> list[int]:
 if __name__ == "__main__":
     from time import monotonic as time
     from random import randint
+
     print(" power : karatsuba  karatsuba_v2  simple_multiplication")
     for n in range(100):
         u, v = ([randint(1, 255) for _ in range(2**n)] for _ in range(2))
@@ -56,7 +57,7 @@ if __name__ == "__main__":
         t2 = time()
         w1 = simple_multiply(u, v)
         t3 = time()
-        print(f"  {n:3}  : {t1-t0:0.7f} vs {t2-t1:0.7f} vs {t3-t2:0.7f}")
+        print(f"  {n:3}  : {t1 - t0:0.7f} vs {t2 - t1:0.7f} vs {t3 - t2:0.7f}")
         assert w1 == w2
 """
  power : karatsuba  karatsuba_v2  simple_multiplication
