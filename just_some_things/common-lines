@@ -4,14 +4,23 @@ import sys
 
 
 def main(args: list[str]) -> None:
+    input_path: Path | None = None
     output_path: Path | None = None
     paths: list[Path] = []
     args_iter = iter(args[1:])
     for arg in args_iter:
         if arg in ("-o", "--output"):
             output_path = Path(next(args_iter))
+        elif arg in ("-i", "--input"):
+            input_path = Path(next(args_iter))
         else:
             paths.append(Path(arg))
+    if input_path is not None:
+        unpack_unification(
+            input_path.read_text(encoding="utf-8").splitlines(),
+            root=input_path.parent.resolve(),
+        )
+        input_path.unlink()
     output = "".join(
         line + "\n"
         for line in pack_unification(paths, output_path.parent.resolve() if output_path else None)
@@ -36,6 +45,34 @@ def pack_unification(paths: list[Path], root: Path | None) -> list[str]:
         prefix = "#" + hashstr(line)
         unified_source.append(prefix.ljust(8) + line)
     return unified_source
+
+
+def unpack_unification(lines: list[str], root: Path) -> None:
+    paths: list[Path] = []
+    lines_iter = iter(lines)
+    for line in lines_iter:
+        if not line.strip():
+            break
+        paths.append(root / Path(line[2:]))
+    hashes: dict[str, str] = {}
+    last_hash = ""
+    for line in lines_iter:
+        if not line:
+            continue
+        if line.startswith("#"):
+            last_hash = line[1:8].strip()
+            hashes[last_hash] = line[8:]
+        elif last_hash:
+            hashes[last_hash] += "\n" + line[8:]
+    texts = [path.read_text(encoding="utf-8").splitlines() for path in paths]
+    hists = [get_strings(txt) for txt in texts]
+    for line in get_common(*hists):
+        updated_line = hashes[hashstr(line)]
+        for lines, hist in zip(texts, hists):
+            for i in hist[line]:
+                lines[i] = updated_line
+    for path, lines in zip(paths, texts):
+        path.write_text("".join(line + "\n" for line in lines), encoding="utf-8", newline="\n")
 
 
 HASHES: dict[str, str] = {}
