@@ -1,0 +1,75 @@
+#!/usr/bin/env python3
+from pathlib import Path
+import sys
+
+
+def main(args: list[str]) -> None:
+    output_path: Path | None = None
+    paths: list[Path] = []
+    args_iter = iter(args[1:])
+    for arg in args_iter:
+        if arg in ("-o", "--output"):
+            output_path = Path(next(args_iter))
+        else:
+            paths.append(Path(arg))
+    output = "".join(
+        line + "\n"
+        for line in pack_unification(paths, output_path.parent.resolve() if output_path else None)
+    )
+    if output_path is None:
+        print(output.strip())
+        return
+    output_path.write_text(output, encoding="utf-8", newline="\n")
+
+
+def pack_unification(paths: list[Path], root: Path | None) -> list[str]:
+    unified_source = [
+        "# " + str(path.resolve().relative_to(root) if root else path) for path in paths
+    ]
+    unified_source.append("")
+    texts = [path.read_text(encoding="utf-8").splitlines() for path in paths]
+    prefix_length = len(paths) + sum(len(str(len(txt))) for txt in texts) - 1
+    hists = [get_strings(txt) for txt in texts]
+    for line in get_common(*hists):
+        prefix = ":".join(",".join(map(str, h[line])) for h in hists)
+        prefix = "#" + prefix.ljust(prefix_length) + "#"
+        prefix = "#" + hashstr(line)
+        unified_source.append(prefix.ljust(8) + line)
+    return unified_source
+
+
+HASHES: dict[str, str] = {}
+
+
+def hashstr(line: str) -> str:
+    x = 0
+    for ch in line:
+        x = (ord(ch) + 255 * x) & 0xFFFF
+    hsh = f"{x:04X}"
+    if hsh in HASHES and HASHES[hsh] != line:
+        sibling = HASHES[hsh]
+        raise ValueError(f"Hash collision:\n\t{line!r}\n\t{sibling!r}")
+    HASHES[hsh] = line
+    return hsh
+
+
+def get_strings(lines: list[str]) -> dict[str, list[int]]:
+    histogram: dict[str, list[int]] = {}
+    for i, line in enumerate(lines):
+        if line.strip():
+            hashstr(line)
+            histogram.setdefault(line, []).append(i)
+    return histogram
+
+
+def get_common(*histograms: dict[str, list[int]]) -> list[str]:
+    lines: list[str] = []
+    for line in histograms[0]:
+        if all(line in histograms[i] for i in range(1, len(histograms))):
+            lines.append(line)
+    # lines.sort()
+    return lines
+
+
+if __name__ == "__main__":
+    main(sys.argv)
