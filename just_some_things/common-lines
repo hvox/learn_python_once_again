@@ -37,13 +37,14 @@ def pack_unification(paths: list[Path], root: Path | None) -> list[str]:
     ]
     unified_source.append("")
     texts = [path.read_text(encoding="utf-8").splitlines() for path in paths]
-    prefix_length = len(paths) + sum(len(str(len(txt))) for txt in texts) - 1
     hists = [get_strings(txt) for txt in texts]
+    last_line_idx = 0
     for line in get_common(*hists):
-        prefix = ":".join(",".join(map(str, h[line])) for h in hists)
-        prefix = "#" + prefix.ljust(prefix_length) + "#"
-        prefix = "#" + hashstr(line)
-        unified_source.append(prefix.ljust(8) + line)
+        line_idx = hists[0][line][0]
+        for _ in range(min(2, line_idx - last_line_idx - 1)):
+            unified_source.append("")
+        unified_source.append(f"{line}  #!{hashstr(line)}")
+        last_line_idx = line_idx
     return unified_source
 
 
@@ -57,13 +58,15 @@ def unpack_unification(lines: list[str], root: Path) -> None:
     hashes: dict[str, str] = {}
     last_hash = ""
     for line in lines_iter:
-        if not line:
+        if not line.strip():
             continue
-        if line.startswith("#"):
-            last_hash = line[1:8].strip()
-            hashes[last_hash] = line[8:]
-        elif last_hash:
-            hashes[last_hash] += "\n" + line[8:]
+        line, hsh = line.rsplit("#!", 1)
+        line = line.removesuffix(" ").removesuffix(" ")
+        if hsh != last_hash:
+            hashes[hsh] = line
+        else:
+            hashes[last_hash] += "\n" + line
+        last_hash = hsh
     texts = [path.read_text(encoding="utf-8").splitlines() for path in paths]
     hists = [get_strings(txt) for txt in texts]
     for line in get_common(*hists):
